@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+    <rect width="64" height="64" rx="12" fill="#111111"/>
+    <!-- Stylized 'R' with safety orange accent -->
+    <path d="M16 16 H34 C41 16 46 20.5 46 26.5 C46 32.5 41 37 34 37 H24 V48 H16 V16 Z M24 23 V30 H33 C36 30 38 28.5 38 26.5 C38 24.5 36 23 33 23 H24 Z" fill="#FFFFFF"/>
+    <path d="M31 37 L46 48 H36 L24 37 H31 Z" fill="#FFFFFF"/>
+    <circle cx="48" cy="46" r="4" fill="#E65100"/>
+</svg>

@@ -1,0 +1,7 @@
+/vendor
+/node_modules
+/.git
+/tests
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml

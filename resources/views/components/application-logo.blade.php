@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" fill="none" {{ $attributes->merge(['class' => 'h-8 w-auto']) }}>
+    <!-- Geometric Minimalist RESET Wordmark -->
+    <path d="M4 10 H20 C25.5 10 29 13.5 29 18 C29 22.5 25.5 26 20 26 H4 V10 Z M10 16 V20 H19 C21 20 22.5 19 22.5 18 C22.5 17 21 16 19 16 H10 Z M18 26 L29 38 H22 L12 26 H18 Z" fill="currentColor"/>
+    <path d="M38 10 H60 V16 H44 V21 H56 V27 H44 V32 H60 V38 H38 V10 Z" fill="currentColor"/>
+    <path d="M68 32 C69.5 35.5 73.5 38 78 38 C83.5 38 87 35 87 31 C87 26.5 83 25 76 23.5 C68.5 21.5 64 19 64 13.5 C64 7.5 69 4 77 4 C83 4 87.5 7 89 11 L83.5 14 C82.5 11.5 80 10 77 10 C72.5 10 70 12 70 14 C70 16.5 73 17.5 80 19 C88 21 93 23.5 93 29.5 C93 36 87.5 44 78 44 C70 44 64.5 39.5 62.5 34 L68 32 Z" fill="currentColor" transform="translate(0, -3)"/>
+    <path d="M102 10 H124 V16 H108 V21 H120 V27 H108 V32 H124 V38 H102 V10 Z" fill="currentColor"/>
+    <path d="M130 10 H154 V16 H145 V38 H139 V16 H130 V10 Z" fill="currentColor"/>
+    <!-- Distinctive Safety Orange Minimalist Reset Dot -->
+    <circle cx="166" cy="35" r="3.5" fill="#E65100"/>
+</svg>

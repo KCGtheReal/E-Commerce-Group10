@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" fill="none">
+    <rect width="140" height="40" rx="6" fill="#181818"/>
+    <circle cx="24" cy="20" r="11" fill="#E1251B"/>
+    <path d="M21 15 L28 20 L21 25 Z" fill="#FFFFFF"/>
+    <text x="44" y="25" fill="#FFFFFF" font-family="'Space Grotesk', sans-serif" font-weight="700" font-size="15" letter-spacing="0.5">BAKONG</text>
+</svg>

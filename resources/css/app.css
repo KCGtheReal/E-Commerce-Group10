@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html.dark {
+        color-scheme: dark;
+    }
+
+    /* Core Dark Mode Colors across Storefront */
+    html.dark body {
+        background-color: #0D0D0D !important;
+        color: #F5F4F0 !important;
+    }
+
+    html.dark .bg-brand-offwhite {
+        background-color: #0D0D0D !important;
+    }
+
+    html.dark .bg-brand-bone {
+        background-color: #171717 !important;
+    }
+
+    html.dark .bg-brand-card-bg {
+        background-color: #1C1C1E !important;
+    }
+
+    html.dark .bg-white {
+        background-color: #171717 !important;
+        color: #F5F4F0;
+    }
+
+    html.dark .border-brand-border,
+    html.dark .border-black\/10,
+    html.dark .border-black\/20 {
+        border-color: #262626 !important;
+    }
+
+    html.dark .border-brand-dark\/40 {
+        border-color: #333333 !important;
+    }
+
+    html.dark .text-brand-black {
+        color: #F5F4F0 !important;
+    }
+
+    html.dark .text-brand-black\/70,
+    html.dark .text-brand-black\/60,
+    html.dark .text-brand-black\/50 {
+        color: #A3A3A3 !important;
+    }
+
+    html.dark .text-neutral-600 {
+        color: #A3A3A3 !important;
+    }
+
+    html.dark .text-neutral-700,
+    html.dark .text-neutral-800 {
+        color: #D4D4D4 !important;
+    }
+
+    html.dark .text-neutral-900 {
+        color: #F5F4F0 !important;
+    }
+
+    /* Dark Mode Form Inputs */
+    html.dark input:not([type="checkbox"]):not([type="radio"]),
+    html.dark select,
+    html.dark textarea {
+        background-color: #1A1A1A !important;
+        border-color: #333333 !important;
+        color: #FFFFFF !important;
+    }
+
+    html.dark input::placeholder,
+    html.dark textarea::placeholder {
+        color: #737373 !important;
+    }
+
+    html.dark input:focus,
+    html.dark select:focus,
+    html.dark textarea:focus {
+        border-color: #E65100 !important;
+        outline-color: #E65100 !important;
+    }
+
+    /* Dark Mode Checkbox */
+    html.dark input[type="checkbox"] {
+        background-color: #1A1A1A !important;
+        border-color: #404040 !important;
+        color: #E65100 !important;
+    }
+
+    /* Dark Mode Hover states */
+    html.dark .hover\:bg-neutral-50:hover,
+    html.dark .hover\:bg-neutral-100:hover {
+        background-color: #262626 !important;
+    }
+
+    html.dark .hover\:text-brand-black:hover {
+        color: #FFFFFF !important;
+    }
+
+    /* Dark Mode Shadows */
+    html.dark .shadow-xs,
+    html.dark .shadow-sm,
+    html.dark .shadow-md,
+    html.dark .shadow-lg,
+    html.dark .shadow-xl,
+    html.dark .shadow-2xl {
+        box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6) !important;
+    }
+}
+
+@layer utilities {
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 9999px;
+    }
+    html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3);
+    }
+    html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.35);
+    }
+}
+

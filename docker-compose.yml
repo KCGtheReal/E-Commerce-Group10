@@ -1,0 +1,52 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      APP_NAME: "RESET"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: "http://localhost"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: reset_ecommerce
+      DB_USERNAME: reset_user
+      DB_PASSWORD: reset_secure_password
+      BAKONG_MOCK: "false"
+      BAKONG_TOKEN: "${BAKONG_TOKEN}"
+      BAKONG_ACCOUNT_ID: "${BAKONG_ACCOUNT_ID:-reset_store@devb}"
+      BAKONG_MERCHANT_NAME: "RESET Store"
+      BAKONG_MERCHANT_CITY: "Phnom Penh"
+      BAKONG_CURRENCY: "USD"
+      QUEUE_CONNECTION: database
+      SESSION_DRIVER: database
+    volumes:
+      - storage_data:/var/www/html/storage/app/public
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: reset_ecommerce
+      MYSQL_USER: reset_user
+      MYSQL_PASSWORD: reset_secure_password
+      MYSQL_ROOT_PASSWORD: root_secure_password
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "reset_user", "-preset_secure_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  storage_data:

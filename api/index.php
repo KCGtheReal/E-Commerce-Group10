@@ -13,15 +13,20 @@ $dirs = [
 
 foreach ($dirs as $dir) {
     if (! is_dir($dir)) {
-        @mkdir($dir, 0755, true);
+        @mkdir($dir, 0777, true);
     }
 }
 
-// Copy pre-seeded SQLite database to writable /tmp on cold start
-$dbSource = __DIR__.'/../database/database.sqlite';
+// Ensure SQLite database exists in /tmp
+$dbSource = dirname(__DIR__).'/database/database.sqlite';
 $dbTarget = '/tmp/database.sqlite';
-if (! file_exists($dbTarget) && file_exists($dbSource)) {
-    @copy($dbSource, $dbTarget);
+
+if (! file_exists($dbTarget)) {
+    if (file_exists($dbSource)) {
+        @copy($dbSource, $dbTarget);
+    } else {
+        @touch($dbTarget);
+    }
 }
 
 // Forward request to Laravel public index entrypoint

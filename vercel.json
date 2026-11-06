@@ -47,6 +47,15 @@
     "SESSION_DRIVER": "cookie",
     "LOG_CHANNEL": "stderr",
     "DB_CONNECTION": "sqlite",
-    "DB_DATABASE": "/tmp/database.sqlite"
+    "DB_DATABASE": "/tmp/database.sqlite",
+    "BAKONG_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiZWZiZTRkYjdmNzIxNDhjYyJ9LCJpYXQiOjE3ODk4ODYyNDAsImV4cCI6MTc5NzY2MjI0MH0.S5M4jtGTUyy4AcQJDO8Zc7VQX7yAk-fvqVkikwmXgcM",
+    "BAKONG_ACCOUNT_ID": "rathana_kongchhun@bkrt",
+    "BAKONG_MERCHANT_NAME": "RESET Store",
+    "BAKONG_MERCHANT_CITY": "Phnom Penh",
+    "BAKONG_CURRENCY": "KHR",
+    "BAKONG_ACCOUNT_TYPE": "individual",
+    "BAKONG_QR_TTL_SECONDS": "600",
+    "BAKONG_API_URL": "https://api-bakong.nbc.gov.kh/v1",
+    "BAKONG_MOCK": "false"
   }
 }

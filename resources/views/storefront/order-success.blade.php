@@ -116,20 +116,20 @@
 
         <!-- Action Links -->
         <div class="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <a href="{{ route('order.invoice', $order->number) }}" target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border border-black/20 text-xs font-bold uppercase tracking-widest text-brand-black hover:bg-black/5 transition">
+            <a href="{{ route('order.invoice', $order->number) }}" target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[50px] border border-black/20 dark:border-neutral-700 text-xs font-bold uppercase tracking-widest text-brand-black dark:text-neutral-100 hover:bg-black/5 dark:hover:bg-neutral-800 transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 @lang('store.invoice_download')
             </a>
 
-            <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div class="grid grid-cols-2 gap-3 w-full sm:w-auto sm:flex sm:items-center">
                 @auth
-                    <a href="{{ route('account.orders') }}" class="w-full sm:w-auto text-center px-6 py-3 border border-black/20 text-xs font-bold uppercase tracking-widest text-brand-black hover:bg-black/5 transition">
+                    <a href="{{ route('account.orders') }}" class="flex-1 inline-flex items-center justify-center min-h-[50px] px-6 py-3 border border-black/20 dark:border-neutral-700 text-xs font-bold uppercase tracking-widest text-brand-black dark:text-neutral-100 hover:bg-black/5 dark:hover:bg-neutral-800 text-center transition">
                         @lang('store.nav_orders')
                     </a>
                 @endauth
-                <a href="{{ route('shop.index') }}" class="w-full sm:w-auto text-center px-6 py-3 bg-brand-black text-white text-xs font-bold uppercase tracking-widest hover:bg-brand-orange transition">
+                <a href="{{ route('shop.index') }}" class="flex-1 inline-flex items-center justify-center min-h-[50px] px-6 py-3 bg-brand-black dark:bg-white text-white dark:text-brand-black text-xs font-bold uppercase tracking-widest hover:bg-brand-orange dark:hover:bg-neutral-200 text-center transition">
                     @lang('store.success_continue_shopping')
                 </a>
             </div>

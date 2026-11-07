@@ -62,16 +62,16 @@
 <body class="min-h-screen bg-brand-offwhite text-brand-black dark:bg-[#0D0D0D] dark:text-neutral-100 antialiased selection:bg-brand-black selection:text-white flex flex-col font-sans transition-colors duration-200" x-data="cartDrawer">
     
     <!-- Top Announcement Bar -->
-    <aside aria-label="Announcement" class="bg-brand-black text-brand-bone text-xs py-2 px-4 border-b border-brand-dark/40">
+    <aside aria-label="Announcement" class="bg-brand-black text-brand-bone text-xs py-2 px-3 sm:px-4 border-b border-brand-dark/40 overflow-x-hidden">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <p class="font-medium tracking-wide truncate">
+            <p class="font-medium tracking-wide truncate max-w-[160px] xs:max-w-xs sm:max-w-none text-[11px] sm:text-xs">
                 @if(app()->getLocale() === 'km')
                     {{ \App\Models\Setting::get('announcement_banner_km', 'ដឹកជញ្ជូនឥតគិតថ្លៃសម្រាប់ការបញ្ជាទិញចាប់ពី 200,000 ៛ ឡើងទៅ | ទូទាត់រហ័សជាមួយបាគង KHQR') }}
                 @else
                     {{ \App\Models\Setting::get('announcement_banner_en', 'Free delivery on orders over 200,000 ៛ | Instant QR checkout with Bakong KHQR') }}
                 @endif
             </p>
-            <div class="flex items-center space-x-3 sm:space-x-4 pl-4 shrink-0 font-display">
+            <div class="flex items-center space-x-2 sm:space-x-4 pl-2 sm:pl-4 shrink-0 font-display">
                 <!-- Theme Switcher (Dark / Light) -->
                 <button
                     type="button"
@@ -133,112 +133,132 @@
             <div class="flex items-center justify-between h-20">
                 <!-- Mobile Menu Button -->
                 <div class="flex items-center lg:hidden" x-data="{ mobileMenu: false }">
-                    <button @click="mobileMenu = !mobileMenu" type="button" class="p-2 -ml-2 text-brand-black focus:outline-none" aria-label="Toggle navigation">
+                    <button @click="mobileMenu = !mobileMenu" type="button" class="p-2 -ml-2 text-brand-black dark:text-white focus:outline-none" aria-label="Toggle navigation">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
                     </button>
 
-                    <!-- Mobile Drawer -->
-                    <div x-show="mobileMenu" x-cloak class="fixed inset-0 z-50 flex lg:hidden">
-                        <div @click="mobileMenu = false" x-show="mobileMenu" class="fixed inset-0 bg-brand-black/60 backdrop-blur-sm transition-opacity"></div>
-                        <div class="relative max-w-xs w-full bg-brand-offwhite dark:bg-[#121212] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto text-brand-black dark:text-neutral-100 transition-colors">
-                            <div>
-                                <div class="flex items-center justify-between pb-6 border-b border-brand-border dark:border-neutral-800">
-                                    <a href="{{ route('home') }}">
-                                        <x-application-logo class="h-6 w-auto text-brand-black dark:text-white transition-colors" />
-                                    </a>
-                                    <button @click="mobileMenu = false" class="p-1 text-brand-black" aria-label="Close menu">
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
+                    <!-- Mobile Drawer (Teleported to body to escape sticky header container) -->
+                    <template x-teleport="body">
+                        <div x-show="mobileMenu" x-cloak class="fixed inset-0 z-50 flex lg:hidden" role="dialog" aria-modal="true" @keydown.window.escape="mobileMenu = false">
+                            <!-- Backdrop Overlay -->
+                            <div @click="mobileMenu = false" 
+                                 x-show="mobileMenu" 
+                                 x-transition:enter="ease-out duration-300"
+                                 x-transition:enter-start="opacity-0"
+                                 x-transition:enter-end="opacity-100"
+                                 x-transition:leave="ease-in duration-200"
+                                 x-transition:leave-start="opacity-100"
+                                 x-transition:leave-end="opacity-0"
+                                 class="fixed inset-0 bg-brand-black/70 backdrop-blur-sm transition-opacity"></div>
 
-                                <!-- Mobile Drawer Search Button -->
-                                <div class="mt-4">
-                                    <button @click="mobileMenu = false; $dispatch('open-search')" type="button" class="w-full flex items-center justify-between px-3.5 py-2.5 text-xs bg-brand-bone border border-brand-border rounded-xl text-neutral-500 hover:text-brand-black transition">
-                                        <span class="flex items-center space-x-2">
-                                            <svg class="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            <!-- Drawer Container -->
+                            <div x-show="mobileMenu"
+                                 x-transition:enter="transform transition ease-out duration-300"
+                                 x-transition:enter-start="-translate-x-full"
+                                 x-transition:enter-end="translate-x-0"
+                                 x-transition:leave="transform transition ease-in duration-200"
+                                 x-transition:leave-start="translate-x-0"
+                                 x-transition:leave-end="-translate-x-full"
+                                 class="relative max-w-xs w-full h-full min-h-screen bg-brand-offwhite dark:bg-[#121212] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto text-brand-black dark:text-neutral-100 transition-colors z-10">
+                                <div>
+                                    <div class="flex items-center justify-between pb-6 border-b border-brand-border dark:border-neutral-800">
+                                        <a href="{{ route('home') }}" @click="mobileMenu = false">
+                                            <x-application-logo class="h-6 w-auto text-brand-black dark:text-white transition-colors" />
+                                        </a>
+                                        <button @click="mobileMenu = false" class="p-1.5 text-brand-black dark:text-white hover:text-brand-accent transition" aria-label="Close menu">
+                                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
-                                            <span>{{ __('store.search_placeholder') }}</span>
-                                        </span>
-                                        <span class="text-[10px] font-mono text-neutral-400 uppercase font-bold">Search</span>
-                                    </button>
-                                </div>
-
-                                <nav class="mt-5 flex flex-col space-y-3 text-lg font-display uppercase tracking-wider">
-                                    <a href="{{ route('home') }}" class="py-1.5 hover:text-brand-accent transition {{ request()->routeIs('home') ? 'text-brand-accent font-bold' : 'text-brand-black' }}">{{ __('store.nav_home') }}</a>
-                                    <a href="{{ route('shop.index') }}" class="py-1.5 hover:text-brand-accent transition {{ $isShop ? 'text-brand-accent font-bold' : 'text-brand-black' }}">{{ __('store.nav_shop') }}</a>
-                                    <div class="pl-4 py-1 flex flex-col space-y-2 text-sm text-neutral-600 border-l-2 border-brand-border">
-                                        <a href="{{ route('shop.index', ['category' => 'tees-and-tops']) }}" class="py-1 hover:text-brand-accent transition {{ $isTees ? 'text-brand-accent font-bold' : '' }}">{{ __('store.nav_tees') }}</a>
-                                        <a href="{{ route('shop.index', ['category' => 'hoodies-and-outerwear']) }}" class="py-1 hover:text-brand-accent transition {{ $isOuterwear ? 'text-brand-accent font-bold' : '' }}">{{ __('store.nav_outerwear') }}</a>
-                                        <a href="{{ route('shop.index', ['category' => 'pants-and-bottoms']) }}" class="py-1 hover:text-brand-accent transition {{ $isBottoms ? 'text-brand-accent font-bold' : '' }}">{{ __('store.nav_bottoms') }}</a>
-                                    </div>
-                                    <a href="{{ route('page.about') }}" class="py-1.5 hover:text-brand-accent transition {{ $isAbout ? 'text-brand-accent font-bold' : 'text-brand-black' }}">{{ __('store.nav_about') }}</a>
-                                    <a href="{{ route('page.faq') }}" class="py-1.5 hover:text-brand-accent transition {{ request()->routeIs('page.faq') ? 'text-brand-accent font-bold' : 'text-brand-black' }}">{{ __('store.nav_faq') }}</a>
-                                    <a href="{{ route('page.contact') }}" class="py-1.5 hover:text-brand-accent transition {{ request()->routeIs('page.contact') ? 'text-brand-accent font-bold' : 'text-brand-black' }}">{{ __('store.nav_contact') }}</a>
-                                </nav>
-                            </div>
-                            <div class="pt-6 border-t border-brand-border text-sm space-y-3">
-                                @auth
-                                    @if(auth()->user()->isAdmin())
-                                        <a href="/admin" class="block font-bold text-brand-accent hover:underline flex items-center justify-between">
-                                            <span>{{ __('store.admin_panel') }}</span>
-                                            <span class="text-[10px] bg-brand-accent/10 text-brand-accent px-2 py-0.5 rounded font-mono uppercase font-bold">Admin</span>
-                                        </a>
-                                    @endif
-                                    <a href="{{ route('account.orders') }}" class="block font-medium hover:text-brand-accent">{{ __('store.nav_orders') }}</a>
-                                    <a href="{{ route('account.profile') }}" class="block font-medium hover:text-brand-accent">{{ __('store.account_profile') }}</a>
-                                    <form method="POST" action="{{ route('logout') }}">
-                                        @csrf
-                                        <button type="submit" class="text-neutral-500 hover:text-brand-black">{{ __('store.nav_logout') }}</button>
-                                    </form>
-                                @else
-                                    @if(auth()->guard('admin')->check() && auth()->guard('admin')->user()?->isAdmin())
-                                        <a href="/admin" class="block font-bold text-brand-accent hover:underline flex items-center justify-between">
-                                            <span>{{ __('store.admin_panel') }}</span>
-                                            <span class="text-[10px] bg-brand-accent/10 text-brand-accent px-2 py-0.5 rounded font-mono uppercase font-bold">Admin</span>
-                                        </a>
-                                    @endif
-                                    <a href="{{ route('login') }}" class="block font-bold text-brand-black hover:text-brand-accent">{{ __('store.nav_login') }}</a>
-                                    <a href="{{ route('register') }}" class="block text-neutral-600 hover:text-brand-black">{{ __('store.nav_register') }}</a>
-                                @endauth
-
-                                <!-- Mobile Theme, Currency & Language Toggles -->
-                                <div class="pt-4 border-t border-brand-border/60 dark:border-neutral-800 text-xs space-y-3 font-display">
-                                    <div class="flex items-center justify-between pb-2 border-b border-brand-border/40 dark:border-neutral-800/80">
-                                        <span class="text-neutral-500 uppercase tracking-wider text-[11px]">Theme:</span>
-                                        <button
-                                            type="button"
-                                            onclick="toggleTheme()"
-                                            class="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-brand-bone dark:bg-neutral-800 text-xs font-bold font-display uppercase tracking-wider text-brand-black dark:text-white cursor-pointer"
-                                        >
-                                            <span class="dark:hidden">☀️ Light</span>
-                                            <span class="hidden dark:inline">🌙 Dark</span>
                                         </button>
                                     </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-neutral-500 uppercase tracking-wider text-[11px]">{{ __('store.currency_switch') }}:</span>
-                                        <div class="flex items-center space-x-2">
-                                            <a href="{{ route('currency.set', 'KHR') }}" class="px-2 py-1 rounded {{ \App\Services\CurrencyService::current() === 'KHR' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">៛ KHR</a>
-                                            <span class="text-neutral-300 dark:text-neutral-700">|</span>
-                                            <a href="{{ route('currency.set', 'USD') }}" class="px-2 py-1 rounded {{ \App\Services\CurrencyService::current() === 'USD' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">$ USD</a>
-                                        </div>
+
+                                    <!-- Mobile Drawer Search Button -->
+                                    <div class="mt-4">
+                                        <button @click="mobileMenu = false; $dispatch('open-search')" type="button" class="w-full flex items-center justify-between px-3.5 py-2.5 text-xs bg-brand-bone dark:bg-neutral-800/90 border border-brand-border dark:border-neutral-700 rounded-xl text-neutral-500 dark:text-neutral-300 hover:text-brand-black dark:hover:text-white transition">
+                                            <span class="flex items-center space-x-2">
+                                                <svg class="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                                </svg>
+                                                <span>{{ __('store.search_placeholder') }}</span>
+                                            </span>
+                                            <span class="text-[10px] font-mono text-neutral-400 uppercase font-bold">Search</span>
+                                        </button>
                                     </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-neutral-500 uppercase tracking-wider text-[11px]">{{ __('store.language_switch') }}:</span>
-                                        <div class="flex items-center space-x-2">
-                                            <a href="{{ route('locale.set', 'en') }}" class="px-2 py-1 rounded {{ app()->getLocale() === 'en' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">EN</a>
-                                            <span class="text-neutral-300 dark:text-neutral-700">|</span>
-                                            <a href="{{ route('locale.set', 'km') }}" class="px-2 py-1 rounded {{ app()->getLocale() === 'km' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">ខ្មែរ</a>
+
+                                    <nav class="mt-5 flex flex-col space-y-3 text-lg font-display uppercase tracking-wider">
+                                        <a href="{{ route('home') }}" @click="mobileMenu = false" class="py-1.5 hover:text-brand-accent transition {{ request()->routeIs('home') ? 'text-brand-accent font-bold' : 'text-brand-black dark:text-neutral-100' }}">{{ __('store.nav_home') }}</a>
+                                        <a href="{{ route('shop.index') }}" @click="mobileMenu = false" class="py-1.5 hover:text-brand-accent transition {{ $isShop ? 'text-brand-accent font-bold' : 'text-brand-black dark:text-neutral-100' }}">{{ __('store.nav_shop') }}</a>
+                                        <div class="pl-4 py-1 flex flex-col space-y-2 text-sm text-neutral-600 dark:text-neutral-400 border-l-2 border-brand-border dark:border-neutral-800">
+                                            <a href="{{ route('shop.index', ['category' => 'tees-and-tops']) }}" @click="mobileMenu = false" class="py-1 hover:text-brand-accent transition {{ $isTees ? 'text-brand-accent font-bold' : '' }}">{{ __('store.nav_tees') }}</a>
+                                            <a href="{{ route('shop.index', ['category' => 'hoodies-and-outerwear']) }}" @click="mobileMenu = false" class="py-1 hover:text-brand-accent transition {{ $isOuterwear ? 'text-brand-accent font-bold' : '' }}">{{ __('store.nav_outerwear') }}</a>
+                                            <a href="{{ route('shop.index', ['category' => 'pants-and-bottoms']) }}" @click="mobileMenu = false" class="py-1 hover:text-brand-accent transition {{ $isBottoms ? 'text-brand-accent font-bold' : '' }}">{{ __('store.nav_bottoms') }}</a>
+                                        </div>
+                                        <a href="{{ route('page.about') }}" @click="mobileMenu = false" class="py-1.5 hover:text-brand-accent transition {{ $isAbout ? 'text-brand-accent font-bold' : 'text-brand-black dark:text-neutral-100' }}">{{ __('store.nav_about') }}</a>
+                                        <a href="{{ route('page.faq') }}" @click="mobileMenu = false" class="py-1.5 hover:text-brand-accent transition {{ request()->routeIs('page.faq') ? 'text-brand-accent font-bold' : 'text-brand-black dark:text-neutral-100' }}">{{ __('store.nav_faq') }}</a>
+                                        <a href="{{ route('page.contact') }}" @click="mobileMenu = false" class="py-1.5 hover:text-brand-accent transition {{ request()->routeIs('page.contact') ? 'text-brand-accent font-bold' : 'text-brand-black dark:text-neutral-100' }}">{{ __('store.nav_contact') }}</a>
+                                    </nav>
+                                </div>
+                                <div class="pt-6 border-t border-brand-border dark:border-neutral-800 text-sm space-y-3">
+                                    @auth
+                                        @if(auth()->user()->isAdmin())
+                                            <a href="/admin" class="block font-bold text-brand-accent hover:underline flex items-center justify-between">
+                                                <span>{{ __('store.admin_panel') }}</span>
+                                                <span class="text-[10px] bg-brand-accent/10 text-brand-accent px-2 py-0.5 rounded font-mono uppercase font-bold">Admin</span>
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('account.orders') }}" class="block font-medium hover:text-brand-accent text-brand-black dark:text-neutral-100">{{ __('store.nav_orders') }}</a>
+                                        <a href="{{ route('account.profile') }}" class="block font-medium hover:text-brand-accent text-brand-black dark:text-neutral-100">{{ __('store.account_profile') }}</a>
+                                        <form method="POST" action="{{ route('logout') }}">
+                                            @csrf
+                                            <button type="submit" class="text-neutral-500 hover:text-brand-black dark:hover:text-white">{{ __('store.nav_logout') }}</button>
+                                        </form>
+                                    @else
+                                        @if(auth()->guard('admin')->check() && auth()->guard('admin')->user()?->isAdmin())
+                                            <a href="/admin" class="block font-bold text-brand-accent hover:underline flex items-center justify-between">
+                                                <span>{{ __('store.admin_panel') }}</span>
+                                                <span class="text-[10px] bg-brand-accent/10 text-brand-accent px-2 py-0.5 rounded font-mono uppercase font-bold">Admin</span>
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('login') }}" class="block font-bold text-brand-black dark:text-white hover:text-brand-accent">{{ __('store.nav_login') }}</a>
+                                        <a href="{{ route('register') }}" class="block text-neutral-600 dark:text-neutral-400 hover:text-brand-black dark:hover:text-white">{{ __('store.nav_register') }}</a>
+                                    @endauth
+
+                                    <!-- Mobile Theme, Currency & Language Toggles -->
+                                    <div class="pt-4 border-t border-brand-border/60 dark:border-neutral-800 text-xs space-y-3 font-display">
+                                        <div class="flex items-center justify-between pb-2 border-b border-brand-border/40 dark:border-neutral-800/80">
+                                            <span class="text-neutral-500 uppercase tracking-wider text-[11px]">Theme:</span>
+                                            <button
+                                                type="button"
+                                                onclick="toggleTheme()"
+                                                class="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-brand-bone dark:bg-neutral-800 text-xs font-bold font-display uppercase tracking-wider text-brand-black dark:text-white cursor-pointer"
+                                            >
+                                                <span class="dark:hidden">☀️ Light</span>
+                                                <span class="hidden dark:inline">🌙 Dark</span>
+                                            </button>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-neutral-500 uppercase tracking-wider text-[11px]">{{ __('store.currency_switch') }}:</span>
+                                            <div class="flex items-center space-x-2">
+                                                <a href="{{ route('currency.set', 'KHR') }}" class="px-2 py-1 rounded {{ \App\Services\CurrencyService::current() === 'KHR' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">៛ KHR</a>
+                                                <span class="text-neutral-300 dark:text-neutral-700">|</span>
+                                                <a href="{{ route('currency.set', 'USD') }}" class="px-2 py-1 rounded {{ \App\Services\CurrencyService::current() === 'USD' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">$ USD</a>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-neutral-500 uppercase tracking-wider text-[11px]">{{ __('store.language_switch') }}:</span>
+                                            <div class="flex items-center space-x-2">
+                                                <a href="{{ route('locale.set', 'en') }}" class="px-2 py-1 rounded {{ app()->getLocale() === 'en' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">EN</a>
+                                                <span class="text-neutral-300 dark:text-neutral-700">|</span>
+                                                <a href="{{ route('locale.set', 'km') }}" class="px-2 py-1 rounded {{ app()->getLocale() === 'km' ? 'bg-brand-black text-white dark:bg-white dark:text-brand-black font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white' }}">ខ្មែរ</a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
 
                 <!-- Wordmark Logo -->

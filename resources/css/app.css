@@ -30,6 +30,18 @@
         color: #F5F4F0;
     }
 
+    html.dark .bg-neutral-50 {
+        background-color: #1A1A1A !important;
+    }
+
+    html.dark .bg-neutral-100 {
+        background-color: #242424 !important;
+    }
+
+    html.dark .bg-neutral-200 {
+        background-color: #2E2E2E !important;
+    }
+
     html.dark .border-brand-border,
     html.dark .border-black\/10,
     html.dark .border-black\/20 {

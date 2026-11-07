@@ -141,27 +141,33 @@
 
                     <!-- Mobile Drawer (Teleported to body to escape sticky header container) -->
                     <template x-teleport="body">
-                        <div x-show="mobileMenu" x-cloak class="fixed inset-0 z-50 flex lg:hidden" role="dialog" aria-modal="true" @keydown.window.escape="mobileMenu = false">
-                            <!-- Backdrop Overlay -->
+                        <div x-show="mobileMenu" 
+                             x-cloak 
+                             class="fixed inset-0 z-50 overflow-hidden lg:hidden" 
+                             role="dialog" 
+                             aria-modal="true" 
+                             @keydown.window.escape="mobileMenu = false">
+                            <!-- Backdrop Overlay with Fade Animation -->
                             <div @click="mobileMenu = false" 
                                  x-show="mobileMenu" 
-                                 x-transition:enter="ease-out duration-300"
+                                 x-transition:enter="ease-in-out duration-300"
                                  x-transition:enter-start="opacity-0"
                                  x-transition:enter-end="opacity-100"
-                                 x-transition:leave="ease-in duration-200"
+                                 x-transition:leave="ease-in-out duration-300"
                                  x-transition:leave-start="opacity-100"
                                  x-transition:leave-end="opacity-0"
                                  class="fixed inset-0 bg-brand-black/70 backdrop-blur-sm transition-opacity"></div>
 
-                            <!-- Drawer Container -->
-                            <div x-show="mobileMenu"
-                                 x-transition:enter="transform transition ease-out duration-300"
-                                 x-transition:enter-start="-translate-x-full"
-                                 x-transition:enter-end="translate-x-0"
-                                 x-transition:leave="transform transition ease-in duration-200"
-                                 x-transition:leave-start="translate-x-0"
-                                 x-transition:leave-end="-translate-x-full"
-                                 class="relative max-w-xs w-full h-full min-h-screen bg-brand-offwhite dark:bg-[#121212] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto text-brand-black dark:text-neutral-100 transition-colors z-10">
+                            <!-- Drawer Container with Left-to-Right Slide Animation -->
+                            <div class="fixed inset-y-0 left-0 max-w-full flex pr-10">
+                                <div x-show="mobileMenu"
+                                     x-transition:enter="transform transition ease-out duration-300"
+                                     x-transition:enter-start="-translate-x-full"
+                                     x-transition:enter-end="translate-x-0"
+                                     x-transition:leave="transform transition ease-in duration-250"
+                                     x-transition:leave-start="translate-x-0"
+                                     x-transition:leave-end="-translate-x-full"
+                                     class="w-screen max-w-xs h-full min-h-screen bg-brand-offwhite dark:bg-[#121212] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto text-brand-black dark:text-neutral-100 transition-colors z-10">
                                 <div>
                                     <div class="flex items-center justify-between pb-6 border-b border-brand-border dark:border-neutral-800">
                                         <a href="{{ route('home') }}" @click="mobileMenu = false">
@@ -258,7 +264,8 @@
                                 </div>
                             </div>
                         </div>
-                    </template>
+                    </div>
+                </template>
                 </div>
 
                 <!-- Wordmark Logo -->

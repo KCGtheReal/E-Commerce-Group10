@@ -56,6 +56,6 @@ class RegisteredUserController extends Controller
 
         Auth::guard('admin')->logout();
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }

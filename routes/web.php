@@ -39,16 +39,16 @@ Route::post('/wishlist/toggle', [WishlistController::class, 'toggle'])->name('wi
 // Cart Routes
 Route::prefix('cart')->name('cart.')->group(function () {
     Route::get('/', [CartController::class, 'index'])->name('index');
-    Route::post('/add', [CartController::class, 'add'])->name('add');
-    Route::patch('/items/{item}', [CartController::class, 'update'])->name('update');
-    Route::delete('/items/{item}', [CartController::class, 'remove'])->name('remove');
-    Route::post('/discount', [CartController::class, 'applyDiscount'])->name('discount.apply');
-    Route::delete('/discount', [CartController::class, 'removeDiscount'])->name('discount.remove');
+    Route::post('/add', [CartController::class, 'add'])->middleware('auth')->name('add');
+    Route::patch('/items/{item}', [CartController::class, 'update'])->middleware('auth')->name('update');
+    Route::delete('/items/{item}', [CartController::class, 'remove'])->middleware('auth')->name('remove');
+    Route::post('/discount', [CartController::class, 'applyDiscount'])->middleware('auth')->name('discount.apply');
+    Route::delete('/discount', [CartController::class, 'removeDiscount'])->middleware('auth')->name('discount.remove');
     Route::get('/data', [CartController::class, 'data'])->name('data');
 });
 
-// Checkout Flow
-Route::prefix('checkout')->name('checkout.')->group(function () {
+// Checkout Flow (Requires Authentication)
+Route::middleware('auth')->prefix('checkout')->name('checkout.')->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
     Route::post('/', [CheckoutController::class, 'store'])->name('store');
 });

@@ -109,11 +109,14 @@ return [
     'cart_item_added' => 'Item added to your cart.',
     'cart_item_updated' => 'Cart updated.',
     'cart_item_removed' => 'Item removed from your cart.',
+    'cart_login_required' => 'Please sign in or create an account to add items to your cart.',
+    'cart_signin_required_notice' => 'Sign in is required to add items to cart and buy.',
     'cart_free_shipping_hint' => 'Add :amount more to qualify for FREE nationwide shipping!',
     'cart_free_shipping_unlocked' => 'You have unlocked FREE nationwide delivery!',
 
     // Checkout
     'checkout_title' => 'Checkout',
+    'checkout_signed_in_as' => 'Signed in as',
     'checkout_guest_or_login' => 'Already have an account? Sign in for a faster checkout.',
     'checkout_contact_info' => 'Contact Information',
     'checkout_email' => 'Email Address',

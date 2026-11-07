@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -26,6 +27,21 @@ class CartController extends Controller
 
     public function add(AddToCartRequest $request): JsonResponse|RedirectResponse
     {
+        if (! Auth::check()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'require_login' => true,
+                    'redirect' => route('login'),
+                    'message' => __('store.cart_login_required'),
+                ], 401);
+            }
+
+            session()->put('url.intended', url()->previous());
+
+            return redirect()->route('login')->with('warning', __('store.cart_login_required'));
+        }
+
         try {
             $this->cartService->addItem(
                 (int) $request->input('product_variant_id'),

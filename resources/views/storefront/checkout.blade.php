@@ -9,14 +9,9 @@
         <h1 class="text-3xl sm:text-4xl font-display font-bold uppercase tracking-tight text-brand-black">
             @lang('store.checkout_title')
         </h1>
-        @guest
-            <p class="text-xs sm:text-sm text-brand-black/70 mt-2">
-                @lang('store.checkout_guest_or_login')
-                <a href="{{ route('login') }}" class="font-bold underline uppercase ml-1 hover:text-brand-orange">
-                    @lang('store.nav_login')
-                </a>
-            </p>
-        @endguest
+        <p class="text-xs sm:text-sm text-brand-black/70 mt-2">
+            @lang('store.checkout_signed_in_as') <span class="font-semibold text-brand-black">{{ auth()->user()?->email }}</span>
+        </p>
     </div>
 
     @if(session('error'))

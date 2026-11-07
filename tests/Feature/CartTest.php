@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\DiscountType;
+use App\Models\Cart;
 use App\Models\Discount;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -18,8 +19,35 @@ class CartTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_guest_cannot_add_product_to_cart(): void
+    {
+        $product = Product::factory()->create(['base_price_cents' => 3500]);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'price_cents' => 3500,
+            'stock_quantity' => 10,
+        ]);
+
+        // JSON / AJAX request returns 401
+        $response = $this->postJson(route('cart.add'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+        ]);
+        $response->assertStatus(401);
+
+        // Standard web browser request redirects to login
+        $webResponse = $this->post(route('cart.add'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+        ]);
+        $webResponse->assertRedirect(route('login'));
+    }
+
     public function test_can_add_product_variant_to_cart(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 3500]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -44,6 +72,9 @@ class CartTest extends TestCase
 
     public function test_cannot_add_more_than_available_stock(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 3000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -64,6 +95,9 @@ class CartTest extends TestCase
 
     public function test_can_update_item_quantity(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 2500]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -94,6 +128,9 @@ class CartTest extends TestCase
 
     public function test_can_remove_item_from_cart(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create();
         $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
 
@@ -117,6 +154,9 @@ class CartTest extends TestCase
 
     public function test_can_apply_percentage_discount_code(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 10000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -151,6 +191,9 @@ class CartTest extends TestCase
 
     public function test_rejects_invalid_discount_code(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create();
         $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
 
@@ -179,10 +222,16 @@ class CartTest extends TestCase
             'stock_quantity' => 10,
         ]);
 
-        $this->postJson(route('cart.add'), [
+        // Existing session cart created before session login
+        $guestCart = Cart::create([
+            'session_id' => session()->getId(),
+            'user_id' => null,
+        ]);
+        $guestCart->items()->create([
             'product_variant_id' => $variant->id,
             'quantity' => 2,
         ]);
+        session()->put('cart_id', $guestCart->id);
 
         $cartService = app(CartService::class);
         $cartService->mergeGuestCartToUser($user);

@@ -11,6 +11,7 @@ use App\Models\Discount;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
 use App\Services\CartService;
 use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,8 +21,28 @@ class CheckoutFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_guest_cannot_access_checkout_and_is_redirected_to_login(): void
+    {
+        $response = $this->get(route('checkout.index'));
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_guest_cannot_submit_checkout_and_is_redirected_to_login(): void
+    {
+        $response = $this->post(route('checkout.store'), [
+            'email' => 'guest@example.com',
+            'phone' => '012999888',
+            'province' => 'Phnom Penh',
+            'street_address' => 'House 42, Street 178',
+        ]);
+        $response->assertRedirect(route('login'));
+    }
+
     public function test_checkout_page_renders_with_cart_items_and_shipping(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 3000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -41,8 +62,13 @@ class CheckoutFlowTest extends TestCase
             ->assertSee('Standard Delivery');
     }
 
-    public function test_guest_can_checkout_and_reach_khqr_payment(): void
+    public function test_authenticated_user_can_checkout_and_reach_khqr_payment(): void
     {
+        $user = User::factory()->create([
+            'email' => 'sophea@example.com',
+        ]);
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 3000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -73,6 +99,7 @@ class CheckoutFlowTest extends TestCase
 
         $this->assertEquals(OrderStatus::PendingPayment, $order->status);
         $this->assertEquals(6000, $order->subtotal_cents);
+        $this->assertEquals($user->id, $order->user_id);
         $this->assertNotNull($order->latestPayment);
 
         // Stock reserved
@@ -83,6 +110,9 @@ class CheckoutFlowTest extends TestCase
 
     public function test_checkout_validates_required_delivery_fields(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create();
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -103,8 +133,13 @@ class CheckoutFlowTest extends TestCase
         $response->assertSessionHasErrors(['name', 'phone', 'street_address', 'email']);
     }
 
-    public function test_guest_can_checkout_with_single_full_name(): void
+    public function test_authenticated_user_can_checkout_with_single_full_name(): void
     {
+        $user = User::factory()->create([
+            'email' => 'kongchhunyt@gmail.com',
+        ]);
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 3000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -130,6 +165,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertNotNull($order);
         $this->assertEquals('KONGCHHUN', $order->shipping_address['name']);
         $this->assertEquals('KONGCHHUN', $order->shipping_address['first_name']);
+        $this->assertEquals($user->id, $order->user_id);
         $response->assertRedirect(route('payment.show', ['order' => $order->number]));
     }
 
@@ -193,6 +229,9 @@ class CheckoutFlowTest extends TestCase
 
     public function test_checkout_order_summary_displays_promo_code_section(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 3000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,
@@ -214,6 +253,9 @@ class CheckoutFlowTest extends TestCase
 
     public function test_checkout_reflects_applied_promo_code_discount(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $product = Product::factory()->create(['base_price_cents' => 10000]);
         $variant = ProductVariant::factory()->create([
             'product_id' => $product->id,

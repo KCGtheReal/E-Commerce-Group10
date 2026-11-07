@@ -138,6 +138,18 @@
                 </form>
             </div>
 
+            @guest
+                <div class="pt-1 flex items-center space-x-1.5 text-[11px] text-neutral-500">
+                    <svg class="h-3.5 w-3.5 text-brand-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <span>
+                        {{ __('store.cart_signin_required_notice') }}
+                        <a href="{{ route('login') }}" class="font-bold underline text-brand-black hover:text-brand-accent">{{ __('store.nav_login') }}</a>
+                    </span>
+                </div>
+            @endguest
+
             <!-- Bakong Badge Callout -->
             <div class="bg-brand-bone border border-brand-border rounded p-4 flex items-center space-x-3 text-xs">
                 <img src="{{ asset('images/payments/khqr-logo.svg') }}" alt="KHQR" class="h-6 w-auto shrink-0">
@@ -358,6 +370,8 @@ window.productConfig = {
     outOfStockText: @json(__('store.out_of_stock')),
     addingText: @json(__('store.adding_to_cart')),
     addUrl: @json(route('cart.add')),
+    loginUrl: @json(route('login')),
+    isAuthenticated: @json(auth()->check()),
     variants: @json($product->variants)
 };
 
@@ -373,6 +387,7 @@ if (!window.productPage) {
             quantity: 1,
             isAdding: false,
             variants: config.variants || [],
+            isAuthenticated: Boolean(config.isAuthenticated),
 
             get activeVariant() {
                 return this.variants.find(v => v.color === this.selectedColor && v.size === this.selectedSize) || this.variants[0];
@@ -403,6 +418,12 @@ if (!window.productPage) {
 
             async addToCart() {
                 if (!this.isInStock || this.isAdding) return;
+
+                if (!this.isAuthenticated) {
+                    window.location.href = config.loginUrl || '/login';
+                    return;
+                }
+
                 this.isAdding = true;
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -418,7 +439,18 @@ if (!window.productPage) {
                             quantity: this.quantity
                         })
                     });
+
+                    if (response.status === 401) {
+                        window.location.href = config.loginUrl || '/login';
+                        return;
+                    }
+
                     const data = await response.json();
+                    if (data.require_login) {
+                        window.location.href = data.redirect || config.loginUrl || '/login';
+                        return;
+                    }
+
                     if (data.success) {
                         window.dispatchEvent(new CustomEvent('open-cart'));
                         window.dispatchEvent(new CustomEvent('cart-updated'));

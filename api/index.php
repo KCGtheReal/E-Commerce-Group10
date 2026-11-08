@@ -65,6 +65,7 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HEADER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+    curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
     curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500); // Max 1.5s timeout - never hang!
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 350); // Super fast 350ms connect timeout!
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);

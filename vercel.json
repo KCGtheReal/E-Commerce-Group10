@@ -78,7 +78,6 @@
     "LOG_CHANNEL": "stderr",
     "DB_CONNECTION": "sqlite",
     "DB_DATABASE": "/tmp/database.sqlite",
-    "BACKEND_PC_URL": "https://reset-store-cambodia.loca.lt",
     "BAKONG_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiZWZiZTRkYjdmNzIxNDhjYyJ9LCJpYXQiOjE3ODk4ODYyNDAsImV4cCI6MTc5NzY2MjI0MH0.S5M4jtGTUyy4AcQJDO8Zc7VQX7yAk-fvqVkikwmXgcM",
     "BAKONG_ACCOUNT_ID": "rathana_kongchhun@bkrt",
     "BAKONG_MERCHANT_NAME": "RESET Store",

@@ -468,3 +468,117 @@ Alpine.data('searchModal', () => ({
 }));
 
 Alpine.start();
+
+// -------------------------------------------------------------
+// High-Performance UX: Instant Navigation Prefetcher & Progress Bar
+// -------------------------------------------------------------
+(function() {
+    // 1. Instant Top Navigation Progress Bar
+    let progressBar = null;
+
+    function getProgressBar() {
+        if (!progressBar) {
+            progressBar = document.getElementById('page-progress-bar');
+            if (!progressBar) {
+                progressBar = document.createElement('div');
+                progressBar.id = 'page-progress-bar';
+                document.body.appendChild(progressBar);
+            }
+        }
+        return progressBar;
+    }
+
+    function isEligibleLink(anchor) {
+        if (!anchor || !anchor.href) return false;
+        if (anchor.target === '_blank' || anchor.hasAttribute('download')) return false;
+        if (anchor.getAttribute('rel')?.includes('external')) return false;
+        if (anchor.href.startsWith('javascript:') || anchor.href.includes('#')) return false;
+        if (anchor.closest('[data-no-instant]')) return false;
+
+        try {
+            const dest = new URL(anchor.href, window.location.href);
+            if (dest.origin !== window.location.origin) return false;
+            // Never prefetch or fake progress on destructive/admin/auth-sensitive routes
+            const path = dest.pathname.toLowerCase();
+            if (path.startsWith('/admin') || path.startsWith('/logout') || path.includes('/simulate')) return false;
+            return dest;
+        } catch {
+            return false;
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const a = e.target.closest('a');
+        const dest = isEligibleLink(a);
+        if (!dest) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
+
+        const bar = getProgressBar();
+        bar.style.opacity = '1';
+        bar.style.width = '35%';
+        setTimeout(() => { if (bar.style.width === '35%') bar.style.width = '75%'; }, 180);
+    }, { passive: true });
+
+    window.addEventListener('pageshow', function() {
+        const bar = getProgressBar();
+        if (bar && bar.style.opacity === '1') {
+            bar.style.width = '100%';
+            setTimeout(() => {
+                bar.style.opacity = '0';
+                setTimeout(() => { bar.style.width = '0%'; }, 250);
+            }, 80);
+        }
+    });
+
+    // 2. Instant Speculative Prefetcher (Instant.page architecture)
+    const conn = navigator.connection;
+    if (conn && (conn.saveData || (conn.effectiveType || '').includes('2g'))) {
+        return; // Respect Data Saver / Slow 2G connections
+    }
+
+    const prefetchedUrls = new Set();
+
+    function prefetchUrl(url) {
+        if (!url || prefetchedUrls.has(url)) return;
+        prefetchedUrls.add(url);
+
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = url;
+        link.as = 'document';
+        document.head.appendChild(link);
+    }
+
+    let hoverTimer = null;
+
+    // Desktop: Prefetch on 65ms hover intent
+    document.addEventListener('mouseover', function(e) {
+        const a = e.target.closest('a');
+        const dest = isEligibleLink(a);
+        if (!dest) return;
+        if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
+
+        hoverTimer = setTimeout(() => {
+            prefetchUrl(dest.href);
+        }, 65);
+    }, { passive: true });
+
+    document.addEventListener('mouseout', function(e) {
+        const a = e.target.closest('a');
+        if (a && hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+        }
+    }, { passive: true });
+
+    // Mobile: Prefetch on touchstart (fires ~100-250ms before tap click completes)
+    document.addEventListener('touchstart', function(e) {
+        const a = e.target.closest('a');
+        const dest = isEligibleLink(a);
+        if (!dest) return;
+        if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
+
+        prefetchUrl(dest.href);
+    }, { passive: true });
+})();

@@ -4,7 +4,7 @@
 <!-- Hero Section -->
 <section class="relative bg-brand-black text-white min-h-[85vh] flex items-center overflow-hidden">
     <div class="absolute inset-0 z-0">
-        <img src="https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=1800&q=85" alt="RESET Collection" class="w-full h-full object-cover object-center opacity-35 filter grayscale contrast-125">
+        <img src="https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=1800&q=85" alt="RESET Collection" class="w-full h-full object-cover object-center opacity-35 filter grayscale contrast-125" fetchpriority="high" decoding="async">
         <div class="absolute inset-0 bg-gradient-to-t from-brand-black via-brand-black/40 to-transparent"></div>
     </div>
 
@@ -75,7 +75,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         @foreach($categories as $category)
             <a href="{{ route('shop.index', ['category' => $category->slug]) }}" class="group relative block aspect-[4/5] bg-neutral-200 overflow-hidden rounded">
-                <img src="{{ $category->image_url }}" alt="{{ $category->localized_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out filter grayscale contrast-110">
+                <img src="{{ $category->image_url }}" alt="{{ $category->localized_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out filter grayscale contrast-110" loading="lazy" decoding="async">
                 <div class="absolute inset-0 bg-gradient-to-t from-brand-black/80 via-brand-black/20 to-transparent"></div>
                 <div class="absolute bottom-0 inset-x-0 p-6">
                     <h3 class="text-xl font-display font-bold text-white uppercase tracking-wider">
@@ -110,7 +110,7 @@
             @foreach($newArrivals as $product)
                 <div class="group flex flex-col justify-between">
                     <a href="{{ route('product.show', $product->slug) }}" class="block aspect-[3/4] bg-white overflow-hidden rounded relative border border-brand-border">
-                        <img src="{{ $product->primary_image_url }}" alt="{{ $product->localized_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <img src="{{ $product->primary_image_url }}" alt="{{ $product->localized_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         @if($product->compare_at_price_cents)
                             <span class="absolute top-3 left-3 bg-brand-accent text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded">
                                 {{ __('store.badge_sale') }}
@@ -145,7 +145,7 @@
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div class="aspect-[4/5] bg-neutral-200 overflow-hidden rounded">
-            <img src="https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1200&q=80" alt="RESET Studio Phnom Penh" class="w-full h-full object-cover filter contrast-110">
+            <img src="https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1200&q=80" alt="RESET Studio Phnom Penh" class="w-full h-full object-cover filter contrast-110" loading="lazy" decoding="async">
         </div>
         <div class="space-y-6 lg:pl-8">
             <span class="text-xs font-display uppercase tracking-widest text-brand-accent font-bold">{{ __('store.section_philosophy') }}</span>
@@ -187,7 +187,7 @@
             @foreach($bestSellers as $product)
                 <div class="group flex flex-col justify-between">
                     <a href="{{ route('product.show', $product->slug) }}" class="block aspect-[3/4] bg-white overflow-hidden rounded relative border border-brand-border">
-                        <img src="{{ $product->primary_image_url }}" alt="{{ $product->localized_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <img src="{{ $product->primary_image_url }}" alt="{{ $product->localized_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         <span class="absolute top-3 left-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded">
                             {{ __('store.badge_bestseller') }}
                         </span>

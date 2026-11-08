@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -16,12 +17,14 @@ class ProductController extends Controller
             ->with(['category', 'images', 'variants', 'reviews.user'])
             ->firstOrFail();
 
-        $relatedProducts = Product::where('category_id', $product->category_id)
-            ->where('id', '!=', $product->id)
-            ->where('is_published', true)
-            ->with(['images', 'variants'])
-            ->take(4)
-            ->get();
+        $relatedProducts = Cache::remember("cat_{$product->category_id}_related_prod_{$product->id}", 600, function () use ($product) {
+            return Product::where('category_id', $product->category_id)
+                ->where('id', '!=', $product->id)
+                ->where('is_published', true)
+                ->with(['images', 'variants'])
+                ->take(4)
+                ->get();
+        });
 
         // Check if authenticated user has already purchased this item (for review eligibility)
         $hasPurchased = false;

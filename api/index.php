@@ -3,18 +3,21 @@
 declare(strict_types=1);
 
 /**
- * RESET E-Commerce - Vercel Serverless Gateway & Cambodia PC Reverse Proxy
+ * RESET E-Commerce - Vercel Serverless Gateway & High-Performance Fallback
  *
- * When the user's PC is running 'run-presentation.bat' in Cambodia, this gateway
- * proxies dynamic HTTP requests directly to the local PC backend over the secure tunnel.
- * This guarantees that Bakong KHQR verification, cart sessions, database queries,
- * and admin operations execute on the local Cambodian IP and DNS.
+ * When the user runs 'run-presentation.bat' on their PC in Cambodia, dynamic payment
+ * routes are seamlessly handled with domestic IP/DNS.
  *
- * If the PC backend is offline, it falls back to the local Vercel serverless environment.
+ * If the PC backend is offline, requests immediately execute on Vercel's Edge Serverless
+ * without slow connection timeouts.
  */
 $backendUrl = getenv('BACKEND_PC_URL') ?: 'https://reset-store-cambodia.loca.lt';
+$offlineMarker = '/tmp/pc_tunnel_offline';
 
-if (! empty($backendUrl) && extension_loaded('curl')) {
+// Check if PC tunnel was recently marked offline (cached for 45s)
+$isRecentlyOffline = file_exists($offlineMarker) && (time() - filemtime($offlineMarker) < 45);
+
+if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
     $targetUrl = rtrim($backendUrl, '/').$uri;
 
@@ -51,8 +54,8 @@ if (! empty($backendUrl) && extension_loaded('curl')) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HEADER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 400); // Super fast 400ms connect timeout!
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $response = curl_exec($ch);
@@ -62,8 +65,12 @@ if (! empty($backendUrl) && extension_loaded('curl')) {
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        // If tunnel returned 502/503 (PC offline or tunnel dropped), fall back to local Vercel copy
-        if ($httpCode !== 502 && $httpCode !== 503) {
+        // If tunnel returned 502/503/504 (PC offline or tunnel dropped), fall back to local Vercel copy
+        if ($httpCode !== 502 && $httpCode !== 503 && $httpCode !== 504) {
+            if (file_exists($offlineMarker)) {
+                @unlink($offlineMarker);
+            }
+
             $rawHeaders = substr($response, 0, $headerSize);
             $body = substr($response, $headerSize);
 
@@ -82,9 +89,12 @@ if (! empty($backendUrl) && extension_loaded('curl')) {
 
             echo $body;
             exit;
+        } else {
+            @touch($offlineMarker);
         }
     } else {
         curl_close($ch);
+        @touch($offlineMarker);
     }
 }
 

@@ -14,15 +14,20 @@ declare(strict_types=1);
 $uri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($uri, PHP_URL_PATH) ?: '/';
 
-// Dynamic routes that require Cambodian domestic IP/DNS for Bakong KHQR verification
-$isPaymentRoute = str_starts_with($path, '/checkout') || 
-                  str_starts_with($path, '/payment') || 
-                  str_starts_with($path, '/payments') || 
-                  str_starts_with($path, '/admin');
+// Dynamic stateful routes that should be synchronized with PC backend if live presentation is active
+$isStatefulRoute = str_starts_with($path, '/cart') ||
+                   str_starts_with($path, '/checkout') ||
+                   str_starts_with($path, '/payment') ||
+                   str_starts_with($path, '/payments') ||
+                   str_starts_with($path, '/orders') ||
+                   str_starts_with($path, '/login') ||
+                   str_starts_with($path, '/register') ||
+                   str_starts_with($path, '/account') ||
+                   str_starts_with($path, '/admin');
 
 $backendUrl = getenv('BACKEND_PC_URL');
-// If not explicitly set via env, only attempt tunnel on payment/checkout/admin routes when PC is presenting
-if (empty($backendUrl) && $isPaymentRoute) {
+// If not explicitly set via env, attempt tunnel on stateful/payment routes when PC is presenting
+if (empty($backendUrl) && $isStatefulRoute) {
     $backendUrl = 'https://reset-store-cambodia.loca.lt';
 }
 
@@ -66,8 +71,8 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
     curl_setopt($ch, CURLOPT_HEADER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
     curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500); // Max 1.5s timeout - never hang!
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 350); // Super fast 350ms connect timeout!
+    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 6000); // 6s max timeout for full request
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 400); // 400ms connect timeout
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $response = curl_exec($ch);

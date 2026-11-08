@@ -144,9 +144,8 @@ class OrderService
             // 8. Generate dynamic Bakong KHQR Payment
             $paymentResult = $this->bakongService->generatePayment($order);
 
-            // 9. Clear cart items
-            $cart->items()->delete();
-            $cart->update(['discount_id' => null]);
+            // 9. Clear cart items and session backup
+            $this->cartService->clearCart($cart);
 
             return [
                 'order' => $order,

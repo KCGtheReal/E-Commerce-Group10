@@ -40,6 +40,8 @@ class CartService
                 Session::forget('cart_id');
             }
 
+            $this->restoreCartFromSession($cart);
+
             return $cart;
         }
 
@@ -50,6 +52,8 @@ class CartService
                 ->first();
 
             if ($cart) {
+                $this->restoreCartFromSession($cart);
+
                 return $cart;
             }
         }
@@ -61,6 +65,7 @@ class CartService
         );
 
         Session::put('cart_id', $cart->id);
+        $this->restoreCartFromSession($cart);
 
         return $cart;
     }
@@ -92,15 +97,21 @@ class CartService
 
         if ($existingItem) {
             $existingItem->update(['quantity' => $newTotalQty]);
+            $cart->unsetRelation('items');
+            $this->syncCartToSession($cart);
 
             return $existingItem;
         }
 
-        return CartItem::create([
+        $newItem = CartItem::create([
             'cart_id' => $cart->id,
             'product_variant_id' => $variantId,
             'quantity' => $quantity,
         ]);
+        $cart->unsetRelation('items');
+        $this->syncCartToSession($cart);
+
+        return $newItem;
     }
 
     /**
@@ -115,6 +126,8 @@ class CartService
 
         if ($quantity <= 0) {
             $item->delete();
+            $cart->unsetRelation('items');
+            $this->syncCartToSession($cart);
 
             return null;
         }
@@ -124,6 +137,8 @@ class CartService
         }
 
         $item->update(['quantity' => $quantity]);
+        $cart->unsetRelation('items');
+        $this->syncCartToSession($cart);
 
         return $item;
     }
@@ -135,7 +150,24 @@ class CartService
     {
         $cart = $this->getCart();
 
-        return (bool) CartItem::where('cart_id', $cart->id)->where('id', $itemId)->delete();
+        $deleted = (bool) CartItem::where('cart_id', $cart->id)->where('id', $itemId)->delete();
+        $cart->unsetRelation('items');
+        $this->syncCartToSession($cart);
+
+        return $deleted;
+    }
+
+    /**
+     * Clear all items and reset active discount.
+     */
+    public function clearCart(?Cart $cart = null): void
+    {
+        $activeCart = $cart ?? $this->getCart();
+        $activeCart->items()->delete();
+        $activeCart->update(['discount_id' => null]);
+
+        Session::forget('cart_items_backup');
+        Session::forget('cart_discount_id_backup');
     }
 
     /**
@@ -161,6 +193,7 @@ class CartService
         }
 
         $cart->update(['discount_id' => $discount->id]);
+        $this->syncCartToSession($cart);
 
         return $discount;
     }
@@ -172,6 +205,7 @@ class CartService
     {
         $cart = $this->getCart();
         $cart->update(['discount_id' => null]);
+        $this->syncCartToSession($cart);
     }
 
     /**
@@ -277,5 +311,67 @@ class CartService
         $userCart = Cart::firstOrCreate(['user_id' => $user->id]);
         $this->mergeCarts($guestCart, $userCart);
         Session::forget('cart_id');
+    }
+
+    /**
+     * Backup active cart items into the session cookie.
+     */
+    private function syncCartToSession(Cart $cart): void
+    {
+        $cart->unsetRelation('items')->load('items');
+        $backup = [];
+        foreach ($cart->items as $item) {
+            $backup[] = [
+                'product_variant_id' => $item->product_variant_id,
+                'quantity' => $item->quantity,
+            ];
+        }
+
+        Session::put('cart_items_backup', $backup);
+        if ($cart->discount_id) {
+            Session::put('cart_discount_id_backup', $cart->discount_id);
+        } else {
+            Session::forget('cart_discount_id_backup');
+        }
+    }
+
+    /**
+     * Restore cart items from the session cookie if the database cart has no items.
+     */
+    private function restoreCartFromSession(Cart $cart): void
+    {
+        if (! $cart->items->isEmpty()) {
+            return;
+        }
+
+        $backup = Session::get('cart_items_backup', []);
+        if (empty($backup)) {
+            return;
+        }
+
+        $restoredAny = false;
+        foreach ($backup as $entry) {
+            $variantId = (int) ($entry['product_variant_id'] ?? 0);
+            $qty = (int) ($entry['quantity'] ?? 0);
+            if ($variantId > 0 && $qty > 0) {
+                $variant = ProductVariant::find($variantId);
+                if ($variant && $variant->available_stock > 0) {
+                    CartItem::create([
+                        'cart_id' => $cart->id,
+                        'product_variant_id' => $variantId,
+                        'quantity' => min($qty, $variant->available_stock),
+                    ]);
+                    $restoredAny = true;
+                }
+            }
+        }
+
+        if ($restoredAny) {
+            $discountId = Session::get('cart_discount_id_backup');
+            if ($discountId && ! $cart->discount_id) {
+                $cart->update(['discount_id' => $discountId]);
+            }
+            $cart->load(['items.variant.product.images', 'discount']);
+        }
     }
 }

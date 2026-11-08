@@ -11,14 +11,25 @@ declare(strict_types=1);
  * If the PC backend is offline, requests immediately execute on Vercel's Edge Serverless
  * without slow connection timeouts.
  */
-$backendUrl = getenv('BACKEND_PC_URL') ?: 'https://reset-store-cambodia.loca.lt';
-$offlineMarker = '/tmp/pc_tunnel_offline';
+$uri = $_SERVER['REQUEST_URI'] ?? '/';
+$path = parse_url($uri, PHP_URL_PATH) ?: '/';
 
-// Check if PC tunnel was recently marked offline (cached for 45s)
+// Dynamic routes that require Cambodian domestic IP/DNS for Bakong KHQR verification
+$isPaymentRoute = str_starts_with($path, '/checkout') || 
+                  str_starts_with($path, '/payment') || 
+                  str_starts_with($path, '/payments') || 
+                  str_starts_with($path, '/admin');
+
+$backendUrl = getenv('BACKEND_PC_URL');
+// If not explicitly set via env, only attempt tunnel on payment/checkout/admin routes when PC is presenting
+if (empty($backendUrl) && $isPaymentRoute) {
+    $backendUrl = 'https://reset-store-cambodia.loca.lt';
+}
+
+$offlineMarker = '/tmp/pc_tunnel_offline';
 $isRecentlyOffline = file_exists($offlineMarker) && (time() - filemtime($offlineMarker) < 45);
 
 if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
-    $uri = $_SERVER['REQUEST_URI'] ?? '/';
     $targetUrl = rtrim($backendUrl, '/').$uri;
 
     $ch = curl_init($targetUrl);
@@ -54,8 +65,8 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HEADER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 400); // Super fast 400ms connect timeout!
+    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500); // Max 1.5s timeout - never hang!
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 350); // Super fast 350ms connect timeout!
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $response = curl_exec($ch);

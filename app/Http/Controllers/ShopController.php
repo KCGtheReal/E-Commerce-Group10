@@ -11,7 +11,6 @@ use App\Services\CurrencyService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ShopController extends Controller
 {
@@ -107,49 +106,41 @@ class ShopController extends Controller
 
         $products = $query->paginate(12)->withQueryString();
 
-        // Data for sidebar filters (cached for 10 minutes to eliminate repetitive queries)
-        [$categories, $allPublishedProductsCount, $availableSizes, $availableColors] = Cache::remember(
-            'shop_filter_metadata',
-            600,
-            function () {
-                $categories = Category::where('is_active', true)
-                    ->withCount(['products' => fn ($q) => $q->where('is_published', true)])
-                    ->orderBy('sort_order')
-                    ->get();
+        // Data for sidebar filters
+        $categories = Category::where('is_active', true)
+            ->withCount(['products' => fn ($q) => $q->where('is_published', true)])
+            ->orderBy('sort_order')
+            ->get();
 
-                $allPublishedProductsCount = Product::where('is_published', true)->count();
+        $allPublishedProductsCount = Product::where('is_published', true)->count();
 
-                $rawSizes = ProductVariant::distinct()->pluck('size')->filter()->values()->all();
-                $sizeWeights = [
-                    'XXS' => 1,
-                    'XS' => 2,
-                    'S' => 3,
-                    'M' => 4,
-                    'L' => 5,
-                    'XL' => 6,
-                    'XXL' => 7,
-                    '2XL' => 7,
-                    '3XL' => 8,
-                    'ONE SIZE' => 9,
-                    'ONESIZE' => 9,
-                    'FREE' => 9,
-                ];
-                $availableSizes = collect($rawSizes)->sortBy(function ($s) use ($sizeWeights) {
-                    $upper = strtoupper(trim((string) $s));
+        $rawSizes = ProductVariant::distinct()->pluck('size')->filter()->values()->all();
+        $sizeWeights = [
+            'XXS' => 1,
+            'XS' => 2,
+            'S' => 3,
+            'M' => 4,
+            'L' => 5,
+            'XL' => 6,
+            'XXL' => 7,
+            '2XL' => 7,
+            '3XL' => 8,
+            'ONE SIZE' => 9,
+            'ONESIZE' => 9,
+            'FREE' => 9,
+        ];
+        $availableSizes = collect($rawSizes)->sortBy(function ($s) use ($sizeWeights) {
+            $upper = strtoupper(trim((string) $s));
 
-                    return $sizeWeights[$upper] ?? 50;
-                })->values()->all();
+            return $sizeWeights[$upper] ?? 50;
+        })->values()->all();
 
-                $availableColors = ProductVariant::select('color', 'color_code')
-                    ->whereNotNull('color')
-                    ->where('color', '!=', '')
-                    ->get()
-                    ->unique('color')
-                    ->values();
-
-                return [$categories, $allPublishedProductsCount, $availableSizes, $availableColors];
-            }
-        );
+        $availableColors = ProductVariant::select('color', 'color_code')
+            ->whereNotNull('color')
+            ->where('color', '!=', '')
+            ->get()
+            ->unique('color')
+            ->values();
 
         $activeFilterCount = collect([
             $request->filled('category'),

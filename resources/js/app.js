@@ -498,8 +498,8 @@ Alpine.start();
         try {
             const dest = new URL(anchor.href, window.location.href);
             if (dest.origin !== window.location.origin) return false;
-            // Never prefetch or fake progress on destructive/admin/auth-sensitive routes
             const path = dest.pathname.toLowerCase();
+            // Never intercept destructive/admin/auth-sensitive routes
             if (path.startsWith('/admin') || path.startsWith('/logout') || path.includes('/simulate')) return false;
             return dest;
         } catch {
@@ -507,6 +507,160 @@ Alpine.start();
         }
     }
 
+    // In-memory HTML Page Cache (Instant Speculative Navigation)
+    const pageCache = new Map();
+    const MAX_CACHE_AGE_MS = 120000; // 2 minutes TTL
+    let isNavigating = false;
+
+    async function fetchPage(url) {
+        const cleanUrl = url.split('#')[0];
+        const cached = pageCache.get(cleanUrl);
+        if (cached && (Date.now() - cached.timestamp < MAX_CACHE_AGE_MS)) {
+            return cached;
+        }
+
+        try {
+            const res = await fetch(cleanUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html,application/xhtml+xml',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) return null;
+            if (res.redirected) {
+                return { redirectedUrl: res.url };
+            }
+
+            const html = await res.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const main = doc.getElementById('main-content');
+            if (!main) return null;
+
+            const title = doc.querySelector('title')?.innerText || document.title;
+            const csrfToken = doc.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            const pageData = {
+                title,
+                mainHtml: main.innerHTML,
+                csrfToken,
+                timestamp: Date.now(),
+            };
+
+            pageCache.set(cleanUrl, pageData);
+            return pageData;
+        } catch {
+            return null;
+        }
+    }
+
+    async function navigateTo(url, pushState = true) {
+        if (isNavigating) return;
+        const mainEl = document.getElementById('main-content');
+        if (!mainEl) {
+            window.location.href = url;
+            return;
+        }
+
+        isNavigating = true;
+        const bar = getProgressBar();
+        bar.style.opacity = '1';
+        bar.style.width = '35%';
+
+        // Start subtle content dimming for smooth visual feedback
+        mainEl.style.opacity = '0.35';
+
+        const pageData = await fetchPage(url);
+
+        if (!pageData) {
+            window.location.href = url;
+            return;
+        }
+
+        if (pageData.redirectedUrl) {
+            window.location.href = pageData.redirectedUrl;
+            return;
+        }
+
+        // Finish progress bar
+        bar.style.width = '100%';
+        setTimeout(() => {
+            bar.style.opacity = '0';
+            setTimeout(() => { bar.style.width = '0%'; }, 200);
+        }, 100);
+
+        if (pushState) {
+            window.history.pushState({ url }, pageData.title, url);
+        }
+
+        // Update Title & CSRF Token
+        document.title = pageData.title;
+        if (pageData.csrfToken) {
+            document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', pageData.csrfToken);
+        }
+
+        // Destroy previous Alpine components in main to prevent memory leaks / stale listeners
+        if (window.Alpine) {
+            window.Alpine.destroyTree(mainEl);
+        }
+
+        // Swap Content
+        mainEl.innerHTML = pageData.mainHtml;
+
+        // Re-execute scripts embedded in the new page content
+        const scripts = mainEl.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+
+        // Initialize Alpine on newly swapped DOM
+        if (window.Alpine) {
+            window.Alpine.initTree(mainEl);
+        }
+
+        // Smooth fade-in
+        requestAnimationFrame(() => {
+            mainEl.style.opacity = '1';
+        });
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'instant' });
+
+        // Update active desktop and mobile nav link styling
+        updateNavLinks(url);
+
+        // Dispatch navigation event for storefront listeners
+        window.dispatchEvent(new CustomEvent('page-navigated', { detail: { url } }));
+
+        isNavigating = false;
+    }
+
+    function updateNavLinks(url) {
+        try {
+            const currentPath = new URL(url, window.location.href).pathname.toLowerCase();
+            document.querySelectorAll('header nav a, [x-show="mobileMenu"] nav a').forEach(a => {
+                const linkPath = new URL(a.href, window.location.href).pathname.toLowerCase();
+                const isExact = (linkPath === currentPath);
+                if (isExact && currentPath !== '/') {
+                    a.classList.add('text-brand-accent', 'font-bold');
+                } else if (currentPath === '/' && linkPath === '/') {
+                    a.classList.add('text-brand-accent', 'font-bold');
+                }
+            });
+        } catch {}
+    }
+
+    // Handle Browser Back & Forward buttons instantly from cache
+    window.addEventListener('popstate', () => {
+        navigateTo(window.location.href, false);
+    });
+
+    // Intercept Eligible Link Clicks for Instant In-Memory Navigation
     document.addEventListener('click', function(e) {
         const a = e.target.closest('a');
         const dest = isEligibleLink(a);
@@ -514,45 +668,18 @@ Alpine.start();
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
 
-        const bar = getProgressBar();
-        bar.style.opacity = '1';
-        bar.style.width = '35%';
-        setTimeout(() => { if (bar.style.width === '35%') bar.style.width = '75%'; }, 180);
-    }, { passive: true });
-
-    window.addEventListener('pageshow', function() {
-        const bar = getProgressBar();
-        if (bar && bar.style.opacity === '1') {
-            bar.style.width = '100%';
-            setTimeout(() => {
-                bar.style.opacity = '0';
-                setTimeout(() => { bar.style.width = '0%'; }, 250);
-            }, 80);
-        }
+        e.preventDefault();
+        navigateTo(dest.href, true);
     });
 
-    // 2. Instant Speculative Prefetcher (Instant.page architecture)
+    // Speculative Prefetching on Hover (60ms intent delay) and Touchstart
     const conn = navigator.connection;
     if (conn && (conn.saveData || (conn.effectiveType || '').includes('2g'))) {
         return; // Respect Data Saver / Slow 2G connections
     }
 
-    const prefetchedUrls = new Set();
-
-    function prefetchUrl(url) {
-        if (!url || prefetchedUrls.has(url)) return;
-        prefetchedUrls.add(url);
-
-        const link = document.createElement('link');
-        link.rel = 'prefetch';
-        link.href = url;
-        link.as = 'document';
-        document.head.appendChild(link);
-    }
-
     let hoverTimer = null;
 
-    // Desktop: Prefetch on 65ms hover intent
     document.addEventListener('mouseover', function(e) {
         const a = e.target.closest('a');
         const dest = isEligibleLink(a);
@@ -560,25 +687,23 @@ Alpine.start();
         if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
 
         hoverTimer = setTimeout(() => {
-            prefetchUrl(dest.href);
-        }, 65);
+            fetchPage(dest.href);
+        }, 60);
     }, { passive: true });
 
     document.addEventListener('mouseout', function(e) {
-        const a = e.target.closest('a');
-        if (a && hoverTimer) {
+        if (hoverTimer) {
             clearTimeout(hoverTimer);
             hoverTimer = null;
         }
     }, { passive: true });
 
-    // Mobile: Prefetch on touchstart (fires ~100-250ms before tap click completes)
     document.addEventListener('touchstart', function(e) {
         const a = e.target.closest('a');
         const dest = isEligibleLink(a);
         if (!dest) return;
         if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
 
-        prefetchUrl(dest.href);
+        fetchPage(dest.href);
     }, { passive: true });
 })();

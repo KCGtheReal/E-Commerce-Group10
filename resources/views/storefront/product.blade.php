@@ -358,8 +358,6 @@
     @endif
 
 </div>
-
-@push('scripts')
 <script>
 window.productConfig = {
     initialImage: @json($product->primary_image_url),
@@ -467,5 +465,4 @@ if (!window.productPage) {
     };
 }
 </script>
-@endpush
 @endsection

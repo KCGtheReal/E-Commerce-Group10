@@ -122,6 +122,19 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
 
             http_response_code($httpCode);
 
+            $isPublicCatalogRoute = ($path === '/' ||
+                                     $path === '/shop' ||
+                                     str_starts_with($path, '/products/') ||
+                                     $path === '/about' ||
+                                     $path === '/faq' ||
+                                     $path === '/contact' ||
+                                     $path === '/privacy' ||
+                                     $path === '/terms' ||
+                                     $path === '/shipping' ||
+                                     $path === '/size-guide');
+
+            $hasAuthSession = ! empty($_SERVER['HTTP_COOKIE']) && str_contains($_SERVER['HTTP_COOKIE'], 'reset-session');
+
             foreach (explode("\r\n", $rawHeaders) as $line) {
                 if (empty($line) || stripos($line, 'HTTP/') === 0) {
                     continue;
@@ -130,7 +143,14 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
                 if (str_starts_with($lower, 'transfer-encoding:') || str_starts_with($lower, 'connection:')) {
                     continue;
                 }
+                if ($isPublicCatalogRoute && ! $hasAuthSession && $method === 'GET' && str_starts_with($lower, 'cache-control:')) {
+                    continue;
+                }
                 header($line, false);
+            }
+
+            if ($isPublicCatalogRoute && ! $hasAuthSession && $method === 'GET') {
+                header('Cache-Control: public, s-maxage=60, stale-while-revalidate=300');
             }
 
             echo $body;

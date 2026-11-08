@@ -526,7 +526,7 @@
     @endif
 
     <!-- Main Page Content -->
-    <main class="flex-1">
+    <main id="main-content" class="flex-1 transition-opacity duration-150 ease-out">
         @yield('content')
     </main>
 

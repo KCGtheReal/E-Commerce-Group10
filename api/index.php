@@ -42,7 +42,7 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
     if (function_exists('getallheaders')) {
         foreach (getallheaders() as $name => $val) {
             $lower = strtolower($name);
-            if (in_array($lower, ['host', 'content-length', 'connection', 'accept-encoding'], true)) {
+            if (in_array($lower, ['host', 'content-length', 'connection', 'accept-encoding', 'transfer-encoding'], true)) {
                 continue;
             }
             $headersCaptured[$lower] = true;
@@ -137,10 +137,14 @@ if (! empty($backendUrl) && ! $isRecentlyOffline && extension_loaded('curl')) {
             exit;
         } else {
             @touch($offlineMarker);
+            header("X-Gateway-Fallback: tunnel-http-$httpCode", false);
         }
     } else {
+        $err = curl_error($ch);
+        $errno = curl_errno($ch);
         curl_close($ch);
         @touch($offlineMarker);
+        header("X-Gateway-Fallback: curl-err-$errno-$err", false);
     }
 }
 

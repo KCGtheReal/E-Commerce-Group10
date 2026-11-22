@@ -21,21 +21,54 @@ class CheckoutFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_cannot_access_checkout_and_is_redirected_to_login(): void
+    public function test_guest_can_access_checkout_with_cart_items(): void
     {
+        $product = Product::factory()->create(['base_price_cents' => 3000]);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'price_cents' => 3000,
+            'stock_quantity' => 10,
+        ]);
+
+        $this->post(route('cart.add'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ]);
+
         $response = $this->get(route('checkout.index'));
-        $response->assertRedirect(route('login'));
+        $response->assertOk()
+            ->assertSee('Order Summary')
+            ->assertSee('Guest Checkout');
     }
 
-    public function test_guest_cannot_submit_checkout_and_is_redirected_to_login(): void
+    public function test_guest_can_submit_checkout_and_reach_khqr_payment(): void
     {
+        $product = Product::factory()->create(['base_price_cents' => 3000]);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'price_cents' => 3000,
+            'stock_quantity' => 10,
+        ]);
+
+        $this->post(route('cart.add'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ]);
+
         $response = $this->post(route('checkout.store'), [
+            'name' => 'Guest Customer',
             'email' => 'guest@example.com',
             'phone' => '012999888',
             'province' => 'Phnom Penh',
             'street_address' => 'House 42, Street 178',
+            'shipping_method' => 'standard',
         ]);
-        $response->assertRedirect(route('login'));
+
+        $order = Order::latest()->first();
+        $this->assertNotNull($order);
+        $this->assertNull($order->user_id);
+        $this->assertEquals('guest@example.com', $order->email);
+        $response->assertRedirect(route('payment.show', ['order' => $order->number]));
     }
 
     public function test_checkout_page_renders_with_cart_items_and_shipping(): void

@@ -73,7 +73,10 @@ class CheckoutController extends Controller
             );
 
             // Store order number in session for guest payment authorization
-            session(['active_order_'.$result['order']->number => true]);
+            session([
+                'active_order_'.$result['order']->number => true,
+                'checkout_email' => $request->validated()['email'],
+            ]);
 
             return redirect()->route('payment.show', ['order' => $result['order']->number]);
         } catch (Exception $e) {

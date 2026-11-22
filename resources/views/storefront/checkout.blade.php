@@ -10,7 +10,11 @@
             @lang('store.checkout_title')
         </h1>
         <p class="text-xs sm:text-sm text-brand-black/70 mt-2">
-            @lang('store.checkout_signed_in_as') <span class="font-semibold text-brand-black">{{ auth()->user()?->email }}</span>
+            @auth
+                @lang('store.checkout_signed_in_as') <span class="font-semibold text-brand-black">{{ auth()->user()?->email }}</span>
+            @else
+                <span>Guest Checkout &mdash; Already have an account? <a href="{{ route('login') }}" class="underline font-semibold hover:text-brand-accent">Sign In</a></span>
+            @endauth
         </p>
     </div>
 

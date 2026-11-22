@@ -201,11 +201,6 @@ Alpine.data('productPage', (config = {}) => ({
     async addToCart() {
         if (!this.isInStock || this.isAdding) return;
 
-        if (!this.isAuthenticated) {
-            window.location.href = config.loginUrl || '/login';
-            return;
-        }
-
         this.isAdding = true;
         try {
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -222,16 +217,7 @@ Alpine.data('productPage', (config = {}) => ({
                 })
             });
 
-            if (response.status === 401) {
-                window.location.href = config.loginUrl || '/login';
-                return;
-            }
-
             const data = await response.json();
-            if (data.require_login) {
-                window.location.href = data.redirect || config.loginUrl || '/login';
-                return;
-            }
 
             if (data.success) {
                 window.dispatchEvent(new CustomEvent('open-cart'));

@@ -57,9 +57,9 @@ class AccountController extends Controller
     {
         $order = Order::where('number', $orderNumber)->with(['items', 'latestPayment'])->firstOrFail();
 
-        // Allow owner or admin
+        // Allow owner, admin, or guest session with active order / checkout email
         if (! Auth::check() || (! Auth::user()->isAdmin() && Auth::id() !== $order->user_id)) {
-            if (session('active_order_'.$order->number) !== true) {
+            if (session('active_order_'.$order->number) !== true && session('checkout_email') !== $order->email) {
                 abort(403);
             }
         }

@@ -19,7 +19,7 @@ class CartTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_cannot_add_product_to_cart(): void
+    public function test_guest_can_add_product_to_cart(): void
     {
         $product = Product::factory()->create(['base_price_cents' => 3500]);
         $variant = ProductVariant::factory()->create([
@@ -28,19 +28,19 @@ class CartTest extends TestCase
             'stock_quantity' => 10,
         ]);
 
-        // JSON / AJAX request returns 401
+        // JSON / AJAX request adds item without requiring login
         $response = $this->postJson(route('cart.add'), [
             'product_variant_id' => $variant->id,
             'quantity' => 2,
         ]);
-        $response->assertStatus(401);
-
-        // Standard web browser request redirects to login
-        $webResponse = $this->post(route('cart.add'), [
-            'product_variant_id' => $variant->id,
-            'quantity' => 2,
-        ]);
-        $webResponse->assertRedirect(route('login'));
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'cart' => [
+                    'item_count' => 2,
+                    'subtotal_cents' => 7000,
+                ],
+            ]);
     }
 
     public function test_can_add_product_variant_to_cart(): void

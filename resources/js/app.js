@@ -204,13 +204,19 @@ Alpine.data('productPage', (config = {}) => ({
         this.isAdding = true;
         try {
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const match = document.cookie.match(new RegExp('(^|;\\s*)XSRF-TOKEN=([^;]*)'));
+            const xsrf = match ? decodeURIComponent(match[2]) : '';
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            };
+            if (csrf) headers['X-CSRF-TOKEN'] = csrf;
+            if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+
             const response = await fetch(config.addUrl || '/cart/add', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
+                credentials: 'same-origin',
+                headers: headers,
                 body: JSON.stringify({
                     product_variant_id: this.activeVariant.id,
                     quantity: this.quantity

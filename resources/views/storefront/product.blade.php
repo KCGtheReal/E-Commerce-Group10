@@ -1,7 +1,102 @@
 @extends('layouts.storefront')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" x-data="productPage(productConfig)">
+<script>
+window.productConfig = {
+    initialImage: @json($product->primary_image_url),
+    initialColor: @json($product->variants->first()?->color ?? ''),
+    initialSize: @json($product->variants->first()?->size ?? ''),
+    initialPrice: @json($product->formatted_price),
+    inStockText: @json(__('store.add_to_cart')),
+    outOfStockText: @json(__('store.out_of_stock')),
+    addingText: @json(__('store.adding_to_cart')),
+    addUrl: @json(route('cart.add')),
+    variants: @json($product->variants)
+};
+
+window.productPage = function(config = {}) {
+    return {
+        activeImage: config.initialImage || '',
+        zoomModal: false,
+        sizeGuideModal: false,
+        reviewModal: false,
+        selectedColor: config.initialColor || '',
+        selectedSize: config.initialSize || '',
+        quantity: 1,
+        isAdding: false,
+        variants: config.variants || [],
+
+        get activeVariant() {
+            return this.variants.find(v => v.color === this.selectedColor && v.size === this.selectedSize) || this.variants[0];
+        },
+
+        get availableStock() {
+            return this.activeVariant ? Math.max(0, this.activeVariant.stock_quantity - (this.activeVariant.reserved_quantity || 0)) : 0;
+        },
+
+        get isInStock() {
+            return this.availableStock > 0;
+        },
+
+        get currentPrice() {
+            if (!this.activeVariant) return config.initialPrice || '0 ៛';
+            const currency = window.RESET_STORE?.currency || 'KHR';
+            const rate = window.RESET_STORE?.exchangeRate || 4100;
+            if (currency === 'USD') {
+                return '$' + (this.activeVariant.price_cents / rate).toFixed(2);
+            }
+            return Number(this.activeVariant.price_cents).toLocaleString() + ' ៛';
+        },
+
+        get buttonText() {
+            if (this.isAdding) return config.addingText || 'ADDING...';
+            return this.isInStock ? (config.inStockText || 'ADD TO CART') : (config.outOfStockText || 'OUT OF STOCK');
+        },
+
+        async addToCart() {
+            if (!this.isInStock || this.isAdding) return;
+
+            this.isAdding = true;
+            try {
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const match = document.cookie.match(new RegExp('(^|;\\s*)XSRF-TOKEN=([^;]*)'));
+                const xsrf = match ? decodeURIComponent(match[2]) : '';
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                };
+                if (csrf) headers['X-CSRF-TOKEN'] = csrf;
+                if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+
+                const response = await fetch(config.addUrl || '/cart/add', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: headers,
+                    body: JSON.stringify({
+                        product_variant_id: this.activeVariant.id,
+                        quantity: this.quantity
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.dispatchEvent(new CustomEvent('open-cart'));
+                    window.dispatchEvent(new CustomEvent('cart-updated'));
+                } else {
+                    alert(data.message || 'Error adding item to cart.');
+                }
+            } catch (err) {
+                console.error('Add to cart error:', err);
+            } finally {
+                this.isAdding = false;
+            }
+        }
+    };
+};
+</script>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" x-data="productPage(window.productConfig)">
 
     <!-- Breadcrumb -->
     <nav class="text-xs text-neutral-400 mb-8 font-display uppercase tracking-widest flex items-center space-x-2">
@@ -346,97 +441,4 @@
     @endif
 
 </div>
-<script>
-window.productConfig = {
-    initialImage: @json($product->primary_image_url),
-    initialColor: @json($product->variants->first()?->color ?? ''),
-    initialSize: @json($product->variants->first()?->size ?? ''),
-    initialPrice: @json($product->formatted_price),
-    inStockText: @json(__('store.add_to_cart')),
-    outOfStockText: @json(__('store.out_of_stock')),
-    addingText: @json(__('store.adding_to_cart')),
-    addUrl: @json(route('cart.add')),
-    loginUrl: @json(route('login')),
-    isAuthenticated: @json(auth()->check()),
-    variants: @json($product->variants)
-};
-
-if (!window.productPage) {
-    window.productPage = function(config = {}) {
-        return {
-            activeImage: config.initialImage || '',
-            zoomModal: false,
-            sizeGuideModal: false,
-            reviewModal: false,
-            selectedColor: config.initialColor || '',
-            selectedSize: config.initialSize || '',
-            quantity: 1,
-            isAdding: false,
-            variants: config.variants || [],
-            isAuthenticated: Boolean(config.isAuthenticated),
-
-            get activeVariant() {
-                return this.variants.find(v => v.color === this.selectedColor && v.size === this.selectedSize) || this.variants[0];
-            },
-
-            get availableStock() {
-                return this.activeVariant ? Math.max(0, this.activeVariant.stock_quantity - (this.activeVariant.reserved_quantity || 0)) : 0;
-            },
-
-            get isInStock() {
-                return this.availableStock > 0;
-            },
-
-            get currentPrice() {
-                if (!this.activeVariant) return config.initialPrice || '0 ៛';
-                const currency = window.RESET_STORE?.currency || 'KHR';
-                const rate = window.RESET_STORE?.exchangeRate || 4100;
-                if (currency === 'USD') {
-                    return '$' + (this.activeVariant.price_cents / rate).toFixed(2);
-                }
-                return Number(this.activeVariant.price_cents).toLocaleString() + ' ៛';
-            },
-
-            get buttonText() {
-                if (this.isAdding) return config.addingText || 'ADDING...';
-                return this.isInStock ? (config.inStockText || 'ADD TO CART') : (config.outOfStockText || 'OUT OF STOCK');
-            },
-
-            async addToCart() {
-                if (!this.isInStock || this.isAdding) return;
-
-                this.isAdding = true;
-                try {
-                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                    const response = await fetch(config.addUrl || '/cart/add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                        },
-                        body: JSON.stringify({
-                            product_variant_id: this.activeVariant.id,
-                            quantity: this.quantity
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        window.dispatchEvent(new CustomEvent('open-cart'));
-                        window.dispatchEvent(new CustomEvent('cart-updated'));
-                    } else {
-                        alert(data.message || 'Error adding item to cart.');
-                    }
-                } catch (err) {
-                    console.error('Add to cart error:', err);
-                } finally {
-                    this.isAdding = false;
-                }
-            }
-        };
-    };
-}
-</script>
 @endsection

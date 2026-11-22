@@ -8,13 +8,4 @@ export default defineConfig({
             refresh: true,
         }),
     ],
-    build: {
-        rollupOptions: {
-            output: {
-                entryFileNames: 'assets/app.js',
-                chunkFileNames: 'assets/[name]-[hash].js',
-                assetFileNames: 'assets/app.[ext]',
-            },
-        },
-    },
 });

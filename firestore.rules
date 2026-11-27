@@ -1,0 +1,233 @@
+rules_version = '2';
+
+// =============================================================================
+// RESET Store — Cloud Firestore Security Rules (Prototype — Review Before Prod)
+// =============================================================================
+// Project ID : reset-store-ecommerce
+// Database   : (default) (Cloud Firestore Standard Edition)
+// Scope      : Unprefixed root collections (`FIREBASE_COLLECTIONS_PREFIX=""`)
+//
+// Architecture Overview:
+// - `Website Project` (Laravel 13 + Filament v3 Admin) is the sole
+//   authoritative writer using Google Service Account credentials via
+//   `FirebaseFirestoreService` (Firestore REST API v1), which bypasses client
+//   Security Rules via IAM.
+// - `Mobile Project` (Flutter Web/Android/iOS) uses Laravel REST APIs
+//   (`/api/v1/*`) with custom `ApiToken` Bearer auth and HMAC-signed
+//   `X-Order-Token` headers (NOT Firebase Auth) for carts, checkout, Bakong
+//   KHQR payments, accounts, and order lookups.
+// - FlutterFire (`cloud_firestore`) is used strictly as a read-only client for
+//   non-PII public storefront data.
+// - Consequently, ALL client writes (`create`, `update`, `delete`) across ALL
+//   collections are unconditionally denied (`allow write: if false;`).
+// =============================================================================
+
+// =============================================================================
+// Assumed Data Model (Derived from FirebaseFirestoreService.php & Eloquent)
+// =============================================================================
+//
+// Collection: categories
+// Document ID: {categoryId} (stringified integer Category.id)
+// Fields:
+//   - id: int (required)
+//   - name: string (required)
+//   - name_km: string | null (nullable)
+//   - slug: string (required, unique)
+//   - description: string | null (nullable)
+//   - description_km: string | null (nullable)
+//   - image_url: string | null (nullable)
+//   - is_active: bool (required)
+//   - sort_order: int (required)
+//   - updated_at: timestamp (required)
+//
+// Collection: products
+// Document ID: {productId} (stringified integer Product.id)
+// Fields:
+//   - id: int (required)
+//   - category_id: int (required)
+//   - category_slug: string | null (nullable)
+//   - name: string (required)
+//   - name_km: string | null (nullable)
+//   - slug: string (required, unique)
+//   - sku_prefix: string (required)
+//   - tagline: string | null (nullable)
+//   - tagline_km: string | null (nullable)
+//   - description: string (required)
+//   - description_km: string | null (nullable)
+//   - details: map | list (required, e.g. fabric/care/fit/shipping or [])
+//   - base_price_cents: int (required, KHR base integer)
+//   - compare_at_price_cents: int | null (nullable, KHR base integer)
+//   - is_featured: bool (required)
+//   - is_new_arrival: bool (required)
+//   - is_best_seller: bool (required)
+//   - is_published: bool (required; unpublished products remain synced as false until deleted)
+//   - total_stock: int (required)
+//   - is_in_stock: bool (required)
+//   - average_rating: float (required)
+//   - review_count: int (required)
+//   - images: list<map> (required: id, image_url, alt_text, is_primary, sort_order)
+//   - variants: list<map> (required: id, sku, size, color, color_code, price_cents, stock_quantity, reserved_quantity, available_stock)
+//   - updated_at: timestamp (required)
+//
+// Collection: discounts
+// Document ID: {discountId} (stringified integer Discount.id)
+// Fields:
+//   - id: int (required)
+//   - code: string (required — confidential promo code)
+//   - type: string (required: 'percentage' | 'fixed_amount' | 'free_shipping')
+//   - value: int (required)
+//   - min_spend_cents: int (required)
+//   - max_uses: int | null (nullable)
+//   - used_count: int (required)
+//   - starts_at: timestamp | null (nullable)
+//   - expires_at: timestamp | null (nullable)
+//   - is_active: bool (required)
+//   - updated_at: timestamp (required)
+//
+// Collection: settings
+// Document ID: {settingKey} (allowlisted Setting.key in SETTINGS_PUBLIC_ALLOWLIST)
+// Fields:
+//   - key: string (required)
+//   - group: string (required)
+//   - value: string | int | float | map (required)
+//   - updated_at: timestamp (required)
+//
+// Collection: reviews
+// Document ID: {reviewId} (stringified integer Review.id)
+// Fields:
+//   - id: int (required)
+//   - product_id: int (required)
+//   - author_name: string (required, display name only; no user_id/email/phone)
+//   - rating: int (required, 1..5)
+//   - title: string | null (nullable)
+//   - body: string (required)
+//   - is_verified_purchase: bool (required)
+//   - is_approved: bool (required; unapproved reviews are deleted on sync)
+//   - created_at: timestamp (required)
+//   - updated_at: timestamp (required)
+//
+// Collection: orders
+// Document ID: {orderNumber} (Order.number, e.g. 'RST-2026-00001')
+// Fields (PII-sanitized mirror; excludes email, phone, user_id, street_address, billing_address, notes):
+//   - id: int (required)
+//   - number: string (required)
+//   - status: string (required: 'pending_payment' | 'paid' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'expired' | 'refunded')
+//   - currency: string (required: 'KHR' | 'USD')
+//   - exchange_rate: int (required)
+//   - subtotal_cents: int (required)
+//   - discount_cents: int (required)
+//   - discount_code: string | null (nullable)
+//   - shipping_fee_cents: int (required)
+//   - shipping_method: string (required: 'standard' | 'express')
+//   - total_cents: int (required)
+//   - total_charged_currency_amount: float (required)
+//   - province: string | null (nullable)
+//   - items_count: int (required)
+//   - shipping_carrier: string | null (nullable)
+//   - tracking_number: string | null (nullable)
+//   - paid_at: timestamp | null (nullable)
+//   - shipped_at: timestamp | null (nullable)
+//   - delivered_at: timestamp | null (nullable)
+//   - cancelled_at: timestamp | null (nullable)
+//   - updated_at: timestamp (required)
+//
+// Collection: payments
+// Document ID: {paymentId} (stringified integer Payment.id)
+// Fields (secret-redacted mirror; excludes qr_string, md5, account_id, bakong_response, admin notes):
+//   - id: int (required)
+//   - order_id: int (required)
+//   - order_number: string | null (nullable)
+//   - provider: string (required: 'bakong_khqr')
+//   - currency: string (required: 'KHR' | 'USD')
+//   - amount: float (required)
+//   - status: string (required: 'pending' | 'paid' | 'expired' | 'failed')
+//   - expires_at: timestamp | null (nullable)
+//   - paid_at: timestamp | null (nullable)
+//   - updated_at: timestamp (required)
+//
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // Helper Functions
+    // =========================================================================
+
+    // Only published products are visible on public storefront channels.
+    // Note: FirebaseFirestoreService::buildProductPayload() writes `is_published`
+    // (not `is_active`), and FirebaseSyncObserver upserts unpublished products
+    // with `is_published: false` instead of deleting them.
+    // Client list queries MUST include `.where('is_published', isEqualTo: true)`.
+    function isPublishedProduct() {
+      return resource.data.is_published == true;
+    }
+
+    // Defense-in-depth: only approved reviews may ever be read by clients.
+    // Client list queries MUST include `.where('is_approved', isEqualTo: true)`.
+    function isApprovedReview() {
+      return resource.data.is_approved == true;
+    }
+
+    // =========================================================================
+    // Public Storefront Read-Only Collections
+    // =========================================================================
+
+    // Public product categories catalog (non-PII).
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Published products catalog with embedded variants, images, and aggregate ratings (non-PII).
+    // Unpublished/draft products (`is_published == false`) cannot be read or listed.
+    match /products/{productId} {
+      allow read: if isPublishedProduct();
+      allow write: if false;
+    }
+
+    // Public storefront settings only; FirebaseFirestoreService restricts writes
+    // strictly to SETTINGS_PUBLIC_ALLOWLIST (no internal/secret keys synced).
+    match /settings/{settingKey} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Approved product reviews (display author_name only, zero email/phone/user_id).
+    match /reviews/{reviewId} {
+      allow read: if isApprovedReview();
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // Server-Only / Confidential Collections (Zero Direct Client Access)
+    // =========================================================================
+
+    // Promo codes and discount rules are validated exclusively server-side via
+    // Laravel `POST /api/v1/cart/discount` to prevent code/rule enumeration.
+    match /discounts/{discountId} {
+      allow read, write: if false;
+    }
+
+    // Customer orders must only be accessed through authenticated or HMAC-signed
+    // Laravel endpoints (`/api/v1/account/orders/*`, `/api/v1/orders/*` with `X-Order-Token`),
+    // never via guessable `{orderNumber}` document IDs or collection scans.
+    match /orders/{orderNumber} {
+      allow read, write: if false;
+    }
+
+    // Payment statuses/records must only be accessed through Laravel order/payment
+    // endpoints (`/api/v1/payments/*/status`, `/api/v1/orders/*/payment`), never
+    // via sequential `{paymentId}` lookups or collection scans.
+    match /payments/{paymentId} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Default-Deny Catch-All (Subcollections & Any Unlisted/Prefixed Collections)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

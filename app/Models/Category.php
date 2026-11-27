@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\CatalogCacheService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Category extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saved(static fn (): int => CatalogCacheService::bumpCatalogEpoch());
+        static::deleted(static fn (): int => CatalogCacheService::bumpCatalogEpoch());
+    }
 
     protected $fillable = [
         'name',

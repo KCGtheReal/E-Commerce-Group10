@@ -14,9 +14,9 @@ return [
     |
     */
 
-    'token' => env('BAKONG_TOKEN', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiZWZiZTRkYjdmNzIxNDhjYyJ9LCJpYXQiOjE3ODk4ODYyNDAsImV4cCI6MTc5NzY2MjI0MH0.S5M4jtGTUyy4AcQJDO8Zc7VQX7yAk-fvqVkikwmXgcM'),
+    'token' => env('BAKONG_TOKEN', ''),
 
-    'account_id' => env('BAKONG_ACCOUNT_ID', 'rathana_kongchhun@bkrt'),
+    'account_id' => env('BAKONG_ACCOUNT_ID', 'reset_store@devb'),
 
     'merchant_name' => env('BAKONG_MERCHANT_NAME', 'RESET Store'),
 

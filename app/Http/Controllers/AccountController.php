@@ -8,6 +8,7 @@ use App\Http\Requests\AddressRequest;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Services\OrderAccessTokenService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,15 +54,27 @@ class AccountController extends Controller
         return view('accounts.order-detail', compact('order'));
     }
 
-    public function invoice(string $orderNumber): View
+    public function invoice(Request $request, string $orderNumber, OrderAccessTokenService $orderAccessTokenService): View
     {
         $order = Order::where('number', $orderNumber)->with(['items', 'latestPayment'])->firstOrFail();
 
-        // Allow owner, admin, or guest session with active order / checkout email
-        if (! Auth::check() || (! Auth::user()->isAdmin() && Auth::id() !== $order->user_id)) {
-            if (session('active_order_'.$order->number) !== true && session('checkout_email') !== $order->email) {
-                abort(403);
+        $isAuthorized = false;
+
+        if (Auth::check() && (Auth::user()->isAdmin() || Auth::id() === $order->user_id)) {
+            $isAuthorized = true;
+        } elseif (Auth::guard('admin')->check() && Auth::guard('admin')->user()?->isAdmin()) {
+            $isAuthorized = true;
+        } elseif (session('active_order_'.$order->number) === true || session('checkout_email') === $order->email) {
+            $isAuthorized = true;
+        } else {
+            $orderToken = $request->query('order_token') ?? $request->header('X-Order-Token');
+            if (is_string($orderToken) && $orderAccessTokenService->verify($orderToken, $order)) {
+                $isAuthorized = true;
             }
+        }
+
+        if (! $isAuthorized) {
+            abort(403);
         }
 
         $storeInfo = [

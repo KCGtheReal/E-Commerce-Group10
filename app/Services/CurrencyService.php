@@ -13,9 +13,17 @@ class CurrencyService
      */
     public static function current(): string
     {
-        $currency = session('currency');
-        if (! $currency && request()) {
-            $currency = request()->cookie('currency');
+        $request = request();
+
+        if ($request && ($request->is('api/*') || $request->attributes->has('api_currency'))) {
+            $currency = $request->attributes->get('api_currency')
+                ?? $request->header('X-Currency')
+                ?? $request->query('currency');
+        } else {
+            $currency = session('currency');
+            if (! $currency && $request) {
+                $currency = $request->cookie('currency');
+            }
         }
 
         $currency = strtoupper((string) ($currency ?: config('bakong.currency', 'KHR')));

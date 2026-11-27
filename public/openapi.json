@@ -1,0 +1,2314 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "RESET Store REST API",
+        "version": "1.0.0",
+        "description": "Contract-first API for RESET Store (Unified Website Project backend serving Blade, Filament v3 Admin, and Mobile Project Flutter Client). Monetary *_cents fields store base Cambodian Riel (KHR ៛) integers."
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Unified Laravel Backend Server"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Bootstrap & Home"
+        },
+        {
+            "name": "Catalog & Search"
+        },
+        {
+            "name": "Reviews & Wishlist"
+        },
+        {
+            "name": "Cart & Discounts"
+        },
+        {
+            "name": "Checkout & Bakong KHQR"
+        },
+        {
+            "name": "Authentication"
+        },
+        {
+            "name": "Customer Account"
+        },
+        {
+            "name": "Pages & Support"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "SHA-256 hashed API Bearer token issued by /api/v1/auth/login or /api/v1/auth/register."
+            },
+            "CartToken": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Cart-Token",
+                "description": "Stateless guest cart token mapped to carts.session_id."
+            },
+            "OrderToken": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Order-Token",
+                "description": "Stateless HMAC-SHA256 guest order token issued by POST /api/v1/checkout."
+            }
+        },
+        "parameters": {
+            "LocaleHeader": {
+                "name": "X-Locale",
+                "in": "header",
+                "required": false,
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "en",
+                        "km"
+                    ],
+                    "default": "en"
+                }
+            },
+            "CurrencyHeader": {
+                "name": "X-Currency",
+                "in": "header",
+                "required": false,
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "KHR",
+                        "USD"
+                    ],
+                    "default": "KHR"
+                }
+            }
+        },
+        "schemas": {
+            "ApiErrorResponse": {
+                "type": "object",
+                "required": [
+                    "success",
+                    "message"
+                ],
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "enum": [
+                            false
+                        ]
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "UserDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "admin",
+                            "staff",
+                            "customer"
+                        ]
+                    },
+                    "email_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CartPayloadDto": {
+                "type": "object",
+                "properties": {
+                    "cart_token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "currency": {
+                        "type": "string",
+                        "enum": [
+                            "KHR",
+                            "USD"
+                        ]
+                    },
+                    "exchange_rate": {
+                        "type": "integer"
+                    },
+                    "province": {
+                        "type": "string"
+                    },
+                    "shipping_method": {
+                        "type": "string",
+                        "enum": [
+                            "standard",
+                            "express"
+                        ]
+                    },
+                    "subtotal_cents": {
+                        "type": "integer"
+                    },
+                    "discount_cents": {
+                        "type": "integer"
+                    },
+                    "shipping_fee_cents": {
+                        "type": "integer"
+                    },
+                    "total_cents": {
+                        "type": "integer"
+                    },
+                    "item_count": {
+                        "type": "integer"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "PaymentDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "order_id": {
+                        "type": "integer"
+                    },
+                    "order_number": {
+                        "type": "string"
+                    },
+                    "provider": {
+                        "type": "string",
+                        "enum": [
+                            "bakong_khqr"
+                        ]
+                    },
+                    "md5": {
+                        "type": "string"
+                    },
+                    "qr_string": {
+                        "type": "string"
+                    },
+                    "account_id": {
+                        "type": "string"
+                    },
+                    "merchant_name": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "enum": [
+                            "KHR",
+                            "USD"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "paid",
+                            "expired",
+                            "failed"
+                        ]
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "time_remaining_seconds": {
+                        "type": "integer"
+                    },
+                    "bakong_mock": {
+                        "type": "boolean"
+                    },
+                    "deeplink_url": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/api/v1/bootstrap": {
+            "get": {
+                "tags": [
+                    "Bootstrap & Home"
+                ],
+                "summary": "Store bootstrap settings, categories, size guide & optional cart",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    },
+                    []
+                ]
+            }
+        },
+        "/api/v1/home": {
+            "get": {
+                "tags": [
+                    "Bootstrap & Home"
+                ],
+                "summary": "Home storefront collections and product showcases",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products": {
+            "get": {
+                "tags": [
+                    "Catalog & Search"
+                ],
+                "summary": "Filter, search, sort & paginate published products",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "color",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_price",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_price",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "featured",
+                                "newest",
+                                "price_low",
+                                "price_high"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/search/suggest": {
+            "get": {
+                "tags": [
+                    "Catalog & Search"
+                ],
+                "summary": "Predictive multi-term search autocomplete suggestions",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{slug}": {
+            "get": {
+                "tags": [
+                    "Catalog & Search"
+                ],
+                "summary": "Product detail with variants, 5 localized tabs, reviews & related products",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    []
+                ]
+            }
+        },
+        "/api/v1/products/{slug}/reviews": {
+            "post": {
+                "tags": [
+                    "Reviews & Wishlist"
+                ],
+                "summary": "Create or update authenticated customer review",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "rating",
+                                    "body"
+                                ],
+                                "properties": {
+                                    "rating": {
+                                        "type": "integer"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wishlist": {
+            "get": {
+                "tags": [
+                    "Reviews & Wishlist"
+                ],
+                "summary": "List authenticated user wishlist products",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/wishlist/toggle": {
+            "post": {
+                "tags": [
+                    "Reviews & Wishlist"
+                ],
+                "summary": "Toggle a product in authenticated user wishlist",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/cart": {
+            "get": {
+                "tags": [
+                    "Cart & Discounts"
+                ],
+                "summary": "Fetch active cart and shipping/discount totals",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "province",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "shipping_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "standard",
+                                "express"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/cart/items": {
+            "post": {
+                "tags": [
+                    "Cart & Discounts"
+                ],
+                "summary": "Add product variant to cart",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "product_variant_id",
+                                    "quantity"
+                                ],
+                                "properties": {
+                                    "product_variant_id": {
+                                        "type": "integer"
+                                    },
+                                    "quantity": {
+                                        "type": "integer"
+                                    },
+                                    "province": {
+                                        "type": "string"
+                                    },
+                                    "shipping_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "standard",
+                                            "express"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/cart/items/{item}": {
+            "patch": {
+                "tags": [
+                    "Cart & Discounts"
+                ],
+                "summary": "Update cart item quantity (0 removes item)",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "quantity"
+                                ],
+                                "properties": {
+                                    "quantity": {
+                                        "type": "integer"
+                                    },
+                                    "province": {
+                                        "type": "string"
+                                    },
+                                    "shipping_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "standard",
+                                            "express"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Cart & Discounts"
+                ],
+                "summary": "Remove item from cart",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "province",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "shipping_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "standard",
+                                "express"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/cart/discount": {
+            "post": {
+                "tags": [
+                    "Cart & Discounts"
+                ],
+                "summary": "Apply promo discount code to cart",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "code"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "type": "string"
+                                    },
+                                    "province": {
+                                        "type": "string"
+                                    },
+                                    "shipping_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "standard",
+                                            "express"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Cart & Discounts"
+                ],
+                "summary": "Remove active discount code from cart",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "province",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "shipping_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "standard",
+                                "express"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/checkout": {
+            "post": {
+                "tags": [
+                    "Checkout & Bakong KHQR"
+                ],
+                "summary": "Create order, reserve inventory & generate dynamic Bakong KHQR",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CartToken": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email",
+                                    "phone",
+                                    "province",
+                                    "street_address",
+                                    "shipping_method"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "province": {
+                                        "type": "string"
+                                    },
+                                    "district": {
+                                        "type": "string"
+                                    },
+                                    "commune": {
+                                        "type": "string"
+                                    },
+                                    "street_address": {
+                                        "type": "string"
+                                    },
+                                    "shipping_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "standard",
+                                            "express"
+                                        ]
+                                    },
+                                    "notes": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orders/{orderNumber}/payment": {
+            "get": {
+                "tags": [
+                    "Checkout & Bakong KHQR"
+                ],
+                "summary": "Get order and active Bakong KHQR payment payload",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "orderNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "OrderToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/payments/{payment}/status": {
+            "get": {
+                "tags": [
+                    "Checkout & Bakong KHQR"
+                ],
+                "summary": "Poll Bakong KHQR payment status and auto-finalize paid orders",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "payment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "OrderToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/orders/{orderNumber}/regenerate-qr": {
+            "post": {
+                "tags": [
+                    "Checkout & Bakong KHQR"
+                ],
+                "summary": "Regenerate fresh Bakong KHQR for expired pending order",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "orderNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "OrderToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/payments/{payment}/simulate-pay": {
+            "post": {
+                "tags": [
+                    "Checkout & Bakong KHQR"
+                ],
+                "summary": "Simulate instant payment (strictly non-production BAKONG_MOCK=true only)",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "payment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "OrderToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/orders/{orderNumber}/invoice": {
+            "get": {
+                "tags": [
+                    "Checkout & Bakong KHQR"
+                ],
+                "summary": "Fetch structured Tax Invoice JSON for an order",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "orderNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "OrderToken": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Register customer account, merge X-Cart-Token & issue Bearer token",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "CartToken": []
+                    },
+                    []
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "phone",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    },
+                                    "device_name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Login customer, merge X-Cart-Token & issue Bearer token",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "CartToken": []
+                    },
+                    []
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "device_name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Revoke current Bearer API token",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Send password reset email link",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Fetch current authenticated user profile",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/password": {
+            "put": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Update authenticated user password",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "current_password",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/profile": {
+            "get": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Fetch customer profile and default shipping address",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Update customer name and phone",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/orders": {
+            "get": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Paginated authenticated customer orders",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/account/orders/{orderNumber}": {
+            "get": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Fetch customer order detail with 5-step timeline & order_access_token",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "orderNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/account/addresses": {
+            "get": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "List saved delivery addresses and 25 Cambodian provinces",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Create saved delivery address",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "phone",
+                                    "province",
+                                    "street_address"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "province": {
+                                        "type": "string"
+                                    },
+                                    "district": {
+                                        "type": "string"
+                                    },
+                                    "commune": {
+                                        "type": "string"
+                                    },
+                                    "street_address": {
+                                        "type": "string"
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/addresses/{address}": {
+            "put": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Update saved delivery address",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "phone",
+                                    "province",
+                                    "street_address"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "province": {
+                                        "type": "string"
+                                    },
+                                    "street_address": {
+                                        "type": "string"
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Customer Account"
+                ],
+                "summary": "Delete saved delivery address",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/pages/{slug}": {
+            "get": {
+                "tags": [
+                    "Pages & Support"
+                ],
+                "summary": "Fetch localized structured brand or policy page",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    },
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/contact": {
+            "post": {
+                "tags": [
+                    "Pages & Support"
+                ],
+                "summary": "Submit customer support contact message",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "message"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "subject": {
+                                        "type": "string"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/newsletter": {
+            "post": {
+                "tags": [
+                    "Pages & Support"
+                ],
+                "summary": "Subscribe email to RESET newsletter",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/LocaleHeader"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CurrencyHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    },
+                    "422": {
+                        "description": "Validation or domain rule error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

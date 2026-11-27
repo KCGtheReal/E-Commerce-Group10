@@ -8,12 +8,17 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\CurrencyService;
+use App\Services\FirebaseApiClient;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
 {
+    public function __construct(
+        private readonly FirebaseApiClient $firebaseApi
+    ) {}
+
     public function index(Request $request): View
     {
         $query = Product::where('is_published', true)
@@ -167,6 +172,65 @@ class ShopController extends Controller
     public function suggest(Request $request): JsonResponse
     {
         $search = trim((string) $request->input('q', ''));
+        $locale = app()->getLocale();
+        $currency = CurrencyService::current();
+
+        if ($this->firebaseApi->isEnabled()) {
+            $firebaseSuggest = $this->firebaseApi->searchSuggest($search, $locale, $currency);
+
+            if (is_array($firebaseSuggest)) {
+                $categories = collect(is_array($firebaseSuggest['categories'] ?? null) ? $firebaseSuggest['categories'] : [])
+                    ->filter(static fn (mixed $c): bool => is_array($c) && ! empty($c['slug']))
+                    ->map(static fn (array $c): array => [
+                        'name' => (string) ($c['name'] ?? ''),
+                        'slug' => (string) $c['slug'],
+                        'url' => route('shop.index', ['category' => (string) $c['slug']]),
+                    ])
+                    ->values();
+
+                if ($search === '') {
+                    return response()->json([
+                        'query' => '',
+                        'popular_searches' => is_array($firebaseSuggest['popular_searches'] ?? null)
+                            ? $firebaseSuggest['popular_searches']
+                            : [
+                                'Heavyweight Boxy Tee',
+                                'Hoodies & Outerwear',
+                                'Raw Edge Tee',
+                                'Tactical Cargo',
+                                'Oversized',
+                            ],
+                        'categories' => $categories,
+                        'products' => [],
+                        'total' => 0,
+                        'view_all_url' => route('shop.index'),
+                    ]);
+                }
+
+                $products = collect(is_array($firebaseSuggest['products'] ?? null) ? $firebaseSuggest['products'] : [])
+                    ->filter(static fn (mixed $p): bool => is_array($p) && ! empty($p['slug']))
+                    ->map(static fn (array $p): array => [
+                        'id' => (int) ($p['id'] ?? 0),
+                        'name' => (string) ($p['name'] ?? ''),
+                        'slug' => (string) $p['slug'],
+                        'url' => route('product.show', (string) $p['slug']),
+                        'image_url' => (string) ($p['image_url'] ?? ''),
+                        'price' => (string) ($p['price'] ?? ''),
+                        'compare_at_price' => $p['compare_at_price'] ?? null,
+                        'category' => $p['category'] ?? null,
+                        'is_in_stock' => (bool) ($p['is_in_stock'] ?? false),
+                    ])
+                    ->values();
+
+                return response()->json([
+                    'query' => (string) ($firebaseSuggest['query'] ?? $search),
+                    'products' => $products,
+                    'categories' => $categories,
+                    'total' => (int) ($firebaseSuggest['total'] ?? $products->count()),
+                    'view_all_url' => route('shop.index', ['q' => $search]),
+                ]);
+            }
+        }
 
         if ($search === '') {
             $popularCategories = Category::where('is_active', true)

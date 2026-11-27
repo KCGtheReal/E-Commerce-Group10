@@ -33,5 +33,7 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="BAKONG_MOCK" value="true"/>
+        <env name="FIREBASE_ENABLED" value="false"/>
+        <env name="FIREBASE_API_ENABLED" value="false"/>
     </php>
 </phpunit>

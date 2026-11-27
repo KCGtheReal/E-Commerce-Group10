@@ -1,4 +1,6 @@
 *.log
+firebase-debug*.log
+.firebase/
 *.docx
 .DS_Store
 .env
@@ -19,6 +21,10 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/firebase/*.json
+/storage/app/firebase-credentials.json
+*firebase-adminsdk*.json
+/database/testing_sandbox.sqlite*
 /storage/pail
 /vendor
 _ide_helper.php

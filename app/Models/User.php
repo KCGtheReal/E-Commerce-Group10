@@ -111,4 +111,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasOne(Cart::class);
     }
+
+    public function apiTokens(): HasMany
+    {
+        return $this->hasMany(ApiToken::class);
+    }
 }

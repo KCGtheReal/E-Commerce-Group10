@@ -1,0 +1,144 @@
+@baseUrl = http://127.0.0.1:8000
+@locale = en
+@currency = KHR
+@cartToken = 11111111-1111-4111-8111-111111111111
+@token = replace_with_bearer_token
+@orderNumber = RST-2026-XXXXX
+@orderToken = replace_with_order_access_token
+@paymentId = 1
+
+### OpenAPI 3.1.0 Spec
+GET {{baseUrl}}/api/openapi.json
+Accept: application/json
+
+### Swagger UI Interactive Docs
+GET {{baseUrl}}/api/docs
+Accept: text/html
+
+### 1. Store Bootstrap
+GET {{baseUrl}}/api/v1/bootstrap
+Accept: application/json
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+X-Cart-Token: {{cartToken}}
+
+### 2. Home Collections & Showcases
+GET {{baseUrl}}/api/v1/home
+Accept: application/json
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+
+### 3. Shop Products (Filtered & Paginated)
+GET {{baseUrl}}/api/v1/products?sort=featured&page=1&per_page=12
+Accept: application/json
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+
+### 4. Search Suggest
+GET {{baseUrl}}/api/v1/search/suggest?q=heavyweight
+Accept: application/json
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+
+### 5. Product Detail
+GET {{baseUrl}}/api/v1/products/reset-raw-edge-heavyweight-tee
+Accept: application/json
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+
+### 6. Guest Cart (Add Item)
+POST {{baseUrl}}/api/v1/cart/items
+Accept: application/json
+Content-Type: application/json
+X-Cart-Token: {{cartToken}}
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+
+{
+  "product_variant_id": 1,
+  "quantity": 1,
+  "province": "Phnom Penh",
+  "shipping_method": "express"
+}
+
+### 7. Apply Promo Discount (RESET10 / FREESHIP / STARTFRESH)
+POST {{baseUrl}}/api/v1/cart/discount
+Accept: application/json
+Content-Type: application/json
+X-Cart-Token: {{cartToken}}
+
+{
+  "code": "RESET10",
+  "province": "Phnom Penh",
+  "shipping_method": "express"
+}
+
+### 8. Checkout & Bakong KHQR Generation
+POST {{baseUrl}}/api/v1/checkout
+Accept: application/json
+Content-Type: application/json
+X-Cart-Token: {{cartToken}}
+X-Locale: {{locale}}
+X-Currency: {{currency}}
+
+{
+  "name": "Sokha Chan",
+  "email": "sokha@example.com",
+  "phone": "012888999",
+  "province": "Phnom Penh",
+  "district": "Daun Penh",
+  "commune": "Chaktomuk",
+  "street_address": "Street 178, House 12",
+  "shipping_method": "express"
+}
+
+### 9. Poll Payment Status
+GET {{baseUrl}}/api/v1/payments/{{paymentId}}/status
+Accept: application/json
+X-Order-Token: {{orderToken}}
+
+### 10. Simulate Mock Payment (BAKONG_MOCK=true only)
+POST {{baseUrl}}/api/v1/payments/{{paymentId}}/simulate-pay
+Accept: application/json
+X-Order-Token: {{orderToken}}
+
+### 11. Tax Invoice JSON
+GET {{baseUrl}}/api/v1/orders/{{orderNumber}}/invoice
+Accept: application/json
+X-Order-Token: {{orderToken}}
+
+### 12. Customer Login (Merges X-Cart-Token Guest Cart)
+POST {{baseUrl}}/api/v1/auth/login
+Accept: application/json
+Content-Type: application/json
+X-Cart-Token: {{cartToken}}
+
+{
+  "email": "customer@reset.store",
+  "password": "password",
+  "device_name": "api-http-client"
+}
+
+### 13. Customer Profile & Orders
+GET {{baseUrl}}/api/v1/account/profile
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+GET {{baseUrl}}/api/v1/account/orders
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 14. Info Page & Support
+GET {{baseUrl}}/api/v1/pages/shipping
+Accept: application/json
+X-Locale: {{locale}}
+
+###
+POST {{baseUrl}}/api/v1/newsletter
+Accept: application/json
+Content-Type: application/json
+
+{
+  "email": "subscriber@reset.store"
+}

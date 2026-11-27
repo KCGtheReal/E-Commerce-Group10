@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\CatalogCacheService;
 use App\Services\CurrencyService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saved(static fn (): int => CatalogCacheService::bumpCatalogEpoch());
+        static::deleted(static fn (): int => CatalogCacheService::bumpCatalogEpoch());
+    }
 
     protected $fillable = [
         'category_id',
@@ -137,13 +145,40 @@ class Product extends Model
         return $this->total_stock > 0;
     }
 
+    public function scopeWithReviewStats(Builder $query): Builder
+    {
+        return $query
+            ->withCount(['reviews as approved_reviews_count'])
+            ->withAvg('reviews as approved_reviews_avg', 'rating');
+    }
+
     public function getAverageRatingAttribute(): float
     {
+        if (array_key_exists('approved_reviews_avg', $this->attributes)) {
+            $count = (int) ($this->attributes['approved_reviews_count'] ?? 0);
+
+            return $count > 0 ? round((float) $this->attributes['approved_reviews_avg'], 1) : 5.0;
+        }
+
+        if ($this->relationLoaded('reviews')) {
+            return $this->reviews->isNotEmpty()
+                ? round((float) $this->reviews->avg('rating'), 1)
+                : 5.0;
+        }
+
         return (float) ($this->reviews()->avg('rating') ?: 5.0);
     }
 
     public function getReviewCountAttribute(): int
     {
+        if (array_key_exists('approved_reviews_count', $this->attributes)) {
+            return (int) $this->attributes['approved_reviews_count'];
+        }
+
+        if ($this->relationLoaded('reviews')) {
+            return $this->reviews->count();
+        }
+
         return (int) $this->reviews()->count();
     }
 }

@@ -8,9 +8,11 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Mail\OrderPlacedMail;
 use App\Models\Cart;
+use App\Models\Discount;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Exception;
@@ -18,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Throwable;
 
 class OrderService
 {
@@ -30,7 +33,7 @@ class OrderService
     /**
      * Create an Order from active cart with server-side recalculation and stock reservation.
      *
-     * @param  array{first_name: string, last_name: string, email: string, phone: string, province: string, district?: ?string, commune?: ?string, street_address: string, notes?: ?string}  $data
+     * @param  array<string, mixed>  $data
      * @return array{order: Order, payment: Payment, qr_svg: string, qr_string: string, md5: string}
      *
      * @throws Exception
@@ -38,9 +41,8 @@ class OrderService
     public function createOrderFromCart(Cart $cart, array $data, ?User $user = null): array
     {
         return DB::transaction(function () use ($cart, $data, $user) {
-            // Lock cart row to prevent concurrent checkout race condition
             /** @var Cart $lockedCart */
-            $lockedCart = Cart::where('id', $cart->id)->lockForUpdate()->firstOrFail();
+            $lockedCart = Cart::with('discount')->where('id', $cart->id)->lockForUpdate()->firstOrFail();
 
             $cartItems = $lockedCart->items()->with('variant.product')->get();
 
@@ -48,7 +50,17 @@ class OrderService
                 throw new Exception('Your shopping cart is empty.');
             }
 
+            $shippingMethod = strtolower(trim((string) ($data['shipping_method'] ?? 'standard')));
+            if (! in_array($shippingMethod, ['standard', 'express'], true)) {
+                $shippingMethod = 'standard';
+            }
+
+            if ($shippingMethod === 'express' && $data['province'] !== CartService::EXPRESS_SHIPPING_PROVINCE) {
+                throw new Exception('Express delivery is only available in Phnom Penh.');
+            }
+
             // 1. Verify live stock for each item before reservation
+            $touchedProductIds = [];
             foreach ($cartItems as $item) {
                 /** @var ProductVariant $variant */
                 $variant = ProductVariant::where('id', $item->product_variant_id)
@@ -58,14 +70,16 @@ class OrderService
                 if ($item->quantity > $variant->available_stock) {
                     throw new Exception("Product {$variant->product->name} ({$variant->label}) only has {$variant->available_stock} units left.");
                 }
+
+                $touchedProductIds[] = (int) $variant->product_id;
             }
 
             // 2. Recompute all figures server-side (NEVER trust client amounts)
-            $totals = $this->cartService->calculateTotals($data['province']);
-            $subtotalCents = $totals['subtotal_cents'];
-            $discountCents = $totals['discount_cents'];
-            $shippingFeeCents = $totals['shipping_fee_cents'];
-            $totalCents = $totals['total_cents'];
+            $totals = $this->cartService->calculateTotals($data['province'], $shippingMethod, $lockedCart);
+            $subtotalCents = (int) $totals['subtotal_cents'];
+            $discountCents = (int) $totals['discount_cents'];
+            $shippingFeeCents = (int) $totals['shipping_fee_cents'];
+            $totalCents = (int) $totals['total_cents'];
 
             // 3. Currency and Exchange Rate Calculation
             $currency = CurrencyService::current();
@@ -104,9 +118,9 @@ class OrderService
                 'billing_address' => $shippingAddress,
                 'subtotal_cents' => $subtotalCents,
                 'discount_cents' => $discountCents,
-                'discount_code' => $cart->discount?->code,
+                'discount_code' => $lockedCart->discount?->code,
                 'shipping_fee_cents' => $shippingFeeCents,
-                'shipping_method' => $data['shipping_method'] ?? 'standard',
+                'shipping_method' => $shippingMethod,
                 'total_cents' => $totalCents,
                 'currency' => $currency,
                 'exchange_rate' => $exchangeRate,
@@ -132,20 +146,23 @@ class OrderService
                     'subtotal_cents' => $item->subtotal_cents,
                 ]);
 
-                // Reserve inventory immediately
+                // Reserve inventory immediately (increment does not fire Eloquent saved events)
                 $variant->increment('reserved_quantity', $item->quantity);
             }
 
             // 7. Increment discount usage count
-            if ($cart->discount) {
-                $cart->discount->increment('used_count');
+            $discount = $lockedCart->discount;
+            if ($discount) {
+                $discount->increment('used_count');
             }
 
             // 8. Generate dynamic Bakong KHQR Payment
             $paymentResult = $this->bakongService->generatePayment($order);
 
             // 9. Clear cart items and session backup
-            $this->cartService->clearCart($cart);
+            $this->cartService->clearCart($lockedCart);
+
+            $this->schedulePostCommitCacheAndSync($touchedProductIds, $order->id, $paymentResult['payment']->id, $discount?->id);
 
             return [
                 'order' => $order,
@@ -159,16 +176,17 @@ class OrderService
 
     /**
      * Finalize payment as PAID (Idempotent with row locking).
+     *
+     * @param  array<string, mixed>  $bakongResponse
      */
     public function finalizePaidOrder(Payment $payment, array $bakongResponse): bool
     {
         return DB::transaction(function () use ($payment, $bakongResponse) {
-            // Lock payment and order records to prevent race conditions
             /** @var Payment $lockedPayment */
             $lockedPayment = Payment::where('id', $payment->id)->lockForUpdate()->firstOrFail();
 
             if ($lockedPayment->status === PaymentStatus::Paid) {
-                return true; // Already processed idempotently
+                return true;
             }
 
             /** @var Order $lockedOrder */
@@ -177,12 +195,11 @@ class OrderService
             if ($lockedOrder->isPaid()) {
                 $lockedPayment->update(['status' => PaymentStatus::Paid, 'paid_at' => now(), 'bakong_response' => $bakongResponse]);
 
-                return true; // Order already finalized by concurrent payment verification
+                return true;
             }
 
             $wasPending = $lockedPayment->status === PaymentStatus::Pending;
 
-            // Mark Payment as Paid
             $lockedPayment->update([
                 'status' => PaymentStatus::Paid,
                 'paid_at' => now(),
@@ -190,13 +207,12 @@ class OrderService
                 'bakong_response' => $bakongResponse,
             ]);
 
-            // Mark Order as Paid
             $lockedOrder->update([
                 'status' => OrderStatus::Paid,
                 'paid_at' => now(),
             ]);
 
-            // Deduct actual stock and release reservation safely
+            $touchedProductIds = [];
             foreach ($lockedOrder->items as $orderItem) {
                 if ($orderItem->product_variant_id) {
                     $variant = ProductVariant::where('id', $orderItem->product_variant_id)
@@ -206,15 +222,15 @@ class OrderService
                     if ($variant) {
                         $variant->decrement('stock_quantity', $orderItem->quantity);
 
-                        // Only decrement reserved_quantity if reservation was still active (not already expired)
                         if ($wasPending && $variant->reserved_quantity > 0) {
                             $variant->decrement('reserved_quantity', min($variant->reserved_quantity, $orderItem->quantity));
                         }
+
+                        $touchedProductIds[] = (int) $variant->product_id;
                     }
                 }
             }
 
-            // Dispatch confirmation email
             try {
                 Mail::to($lockedOrder->email)->send(new OrderPlacedMail($lockedOrder));
             } catch (Exception $e) {
@@ -223,8 +239,8 @@ class OrderService
                 ]);
             }
 
-            // Dispatch Telegram notification
             $this->telegramService->notifyOrderPaid($lockedOrder);
+            $this->schedulePostCommitCacheAndSync($touchedProductIds, $lockedOrder->id, $lockedPayment->id);
 
             return true;
         });
@@ -247,7 +263,7 @@ class OrderService
             $lockedOrder = Order::where('id', $lockedPayment->order_id)->lockForUpdate()->firstOrFail();
 
             if ($lockedOrder->isPaid()) {
-                return false; // Never expire stock for an order already confirmed paid
+                return false;
             }
 
             $lockedPayment->update([
@@ -255,7 +271,7 @@ class OrderService
                 'last_checked_at' => now(),
             ]);
 
-            // Release reserved stock back to available pool
+            $touchedProductIds = [];
             foreach ($lockedOrder->items as $orderItem) {
                 if ($orderItem->product_variant_id) {
                     $variant = ProductVariant::where('id', $orderItem->product_variant_id)
@@ -264,14 +280,16 @@ class OrderService
 
                     if ($variant) {
                         $variant->decrement('reserved_quantity', min($variant->reserved_quantity, $orderItem->quantity));
+                        $touchedProductIds[] = (int) $variant->product_id;
                     }
                 }
             }
 
-            // Update order status to Expired if not paid
             if ($lockedOrder->status === OrderStatus::PendingPayment) {
                 $lockedOrder->update(['status' => OrderStatus::Expired]);
             }
+
+            $this->schedulePostCommitCacheAndSync($touchedProductIds, $lockedOrder->id, $lockedPayment->id);
 
             return true;
         });
@@ -294,7 +312,7 @@ class OrderService
                 throw new Exception('Order has already been paid.');
             }
 
-            // Verify and re-reserve stock
+            $touchedProductIds = [];
             foreach ($lockedOrder->items as $orderItem) {
                 if ($orderItem->product_variant_id) {
                     $variant = ProductVariant::where('id', $orderItem->product_variant_id)
@@ -306,19 +324,26 @@ class OrderService
                     }
 
                     $variant->increment('reserved_quantity', $orderItem->quantity);
+                    $touchedProductIds[] = (int) $variant->product_id;
                 }
             }
 
-            // Reset order status to pending_payment
             $lockedOrder->update(['status' => OrderStatus::PendingPayment]);
 
-            // Expire previous pending payments
+            $expiredPaymentIds = $lockedOrder->payments()
+                ->where('status', PaymentStatus::Pending)
+                ->pluck('id')
+                ->all();
+
             $lockedOrder->payments()->where('status', PaymentStatus::Pending)->update([
                 'status' => PaymentStatus::Expired,
             ]);
 
-            // Generate fresh KHQR
-            return $this->bakongService->generatePayment($lockedOrder);
+            $result = $this->bakongService->generatePayment($lockedOrder);
+
+            $this->schedulePostCommitCacheAndSync($touchedProductIds, $lockedOrder->id, $result['payment']->id, null, $expiredPaymentIds);
+
+            return $result;
         });
     }
 
@@ -331,7 +356,6 @@ class OrderService
             $payment = $order->latestPayment;
 
             if (! $payment) {
-                // If no payment record exists, generate one
                 $result = $this->bakongService->generatePayment($order);
                 $payment = $result['payment'];
             }
@@ -353,6 +377,77 @@ class OrderService
             ];
 
             return $this->finalizePaidOrder($payment, $mockResponse);
+        });
+    }
+
+    /**
+     * Ensure catalog cache epoch bumps and atomic increment/mass-update rows sync after SQLite commits.
+     *
+     * @param  array<int, int>  $productIds
+     * @param  array<int, int>  $extraPaymentIds
+     */
+    private function schedulePostCommitCacheAndSync(
+        array $productIds,
+        int $orderId,
+        int $paymentId,
+        ?int $discountId = null,
+        array $extraPaymentIds = []
+    ): void {
+        $uniqueProductIds = array_values(array_unique(array_filter($productIds)));
+        $allPaymentIds = array_values(array_unique(array_merge([$paymentId], $extraPaymentIds)));
+
+        DB::afterCommit(static function () use ($uniqueProductIds, $orderId, $allPaymentIds, $discountId): void {
+            CatalogCacheService::bumpCatalogEpoch();
+
+            if (config('firebase.enabled', false) && config('firebase.sync_on_write', true)) {
+                try {
+                    $firestore = app(FirebaseFirestoreService::class);
+
+                    if ($uniqueProductIds !== []) {
+                        Product::with(['category', 'images', 'variants'])
+                            ->whereIn('id', $uniqueProductIds)
+                            ->get()
+                            ->each(static fn (Product $product): bool => $firestore->syncProduct($product));
+                    }
+
+                    if ($discountId) {
+                        $discount = Discount::find($discountId);
+                        if ($discount) {
+                            $firestore->syncDiscount($discount);
+                        }
+                    }
+
+                    $order = Order::withCount('items')->find($orderId);
+                    if ($order) {
+                        $firestore->syncOrder($order);
+                    }
+
+                    Payment::with('order:id,number')
+                        ->whereIn('id', $allPaymentIds)
+                        ->get()
+                        ->each(static fn (Payment $payment): bool => $firestore->syncPayment($payment));
+                } catch (Throwable $e) {
+                    Log::warning('Post-commit Firestore sync failed safely: '.$e->getMessage(), [
+                        'order_id' => $orderId,
+                    ]);
+                }
+            }
+
+            if (config('firebase_api.enabled', false)) {
+                try {
+                    $gatewayClient = app(FirebaseApiClient::class);
+                    if ($uniqueProductIds !== []) {
+                        $gatewayClient->invalidateCache('products');
+                    }
+                    if ($discountId) {
+                        $gatewayClient->invalidateCache('discounts');
+                    }
+                } catch (Throwable $e) {
+                    Log::warning('Post-commit Firebase API cache invalidation failed safely: '.$e->getMessage(), [
+                        'order_id' => $orderId,
+                    ]);
+                }
+            }
         });
     }
 }

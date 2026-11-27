@@ -105,4 +105,4 @@ echo.
 
 set "CF_EXE=cloudflared"
 if exist "C:\Users\Kongc\bin\cloudflared.exe" set "CF_EXE=C:\Users\Kongc\bin\cloudflared.exe"
-powershell -NoProfile -Command "$cf = $env:CF_EXE; $webDir = $env:WEBSITE_DIR; $lanApi = $env:LAN_API_URL; $lanGw = $env:LAN_GATEWAY_URL; $published = $false; & $cf tunnel --url http://127.0.0.1:8000 2>&1 | ForEach-Object { $line = $_.ToString(); Write-Host $line; if (-not $published -and $line -match '(https://[a-z0-9-]+\.trycloudflare\.com)') { $tunnelUrl = $Matches[1]; $published = $true; try { $cmdArgs = @('artisan','app:firebase-runtime','--tunnel=' + $tunnelUrl); if ($lanApi) { $cmdArgs += ('--lan-api=' + $lanApi) }; if ($lanGw) { $cmdArgs += ('--lan-gateway=' + $lanGw) }; Start-Process -FilePath 'php' -ArgumentList $cmdArgs -WorkingDirectory $webDir -WindowStyle Hidden | Out-Null; Write-Host ('[Mobile Sync] Published live tunnel for Android APK: ' + $tunnelUrl) -ForegroundColor Cyan } catch {} } }"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%WEBSITE_DIR%\scripts\cloudflared-sync.ps1" -CloudflaredExe "%CF_EXE%" -WebsiteDir "%WEBSITE_DIR%" -LanApiUrl "%LAN_API_URL%" -LanGatewayUrl "%LAN_GATEWAY_URL%"

@@ -27,13 +27,28 @@ if exist "%API_DIR%\package.json" (
     echo       [WARN] API folder not found at "%API_DIR%". Running in fallback mode.
 )
 
-echo [2/4] Starting Unified Website Backend ^(Laravel + Filament Admin^) on http://127.0.0.1:8000 ...
+echo [2/4] Starting Unified Website Backend ^(Laravel + Filament Admin^) on port 8000 ...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000 " ^| findstr LISTENING') do taskkill /f /pid %%a > nul 2>&1
 pushd "%WEBSITE_DIR%"
-start "RESET Website Backend (Port 8000)" /min cmd /c "php artisan serve --host=127.0.0.1 --port=8000"
+start "RESET Website Backend (Port 8000)" /min cmd /c "php artisan serve --host=0.0.0.0 --port=8000"
 popd
 
+set "LAN_IP="
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "$ip = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and $_.InterfaceAlias -notmatch 'Loopback|vEthernet|VMware|VirtualBox|Hyper-V|WSL|Bluetooth' -and $_.AddressState -eq 'Preferred' } | Sort-Object @{Expression={if($_.InterfaceAlias -match 'Wi-Fi|WLAN|Ethernet'){0}else{1}}}, InterfaceMetric | Select-Object -First 1 -ExpandProperty IPAddress; if ($ip) { Write-Output $ip }"`) do set "LAN_IP=%%I"
+set "LAN_API_URL="
+set "LAN_GATEWAY_URL="
+if not "%LAN_IP%"=="" (
+    set "LAN_API_URL=http://%LAN_IP%:8000"
+    set "LAN_GATEWAY_URL=http://%LAN_IP%:4000"
+)
+
 powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(20); while ((Get-Date) -lt $deadline) { $up8000 = $false; try { $c = New-Object System.Net.Sockets.TcpClient('127.0.0.1', 8000); $c.Close(); $up8000 = $true } catch {}; $up4000 = -not (Test-Path (Join-Path $env:API_DIR 'package.json')); if (-not $up4000) { try { $c2 = New-Object System.Net.Sockets.TcpClient('127.0.0.1', 4000); $c2.Close(); $up4000 = $true } catch {} }; if ($up8000 -and $up4000) { break }; Start-Sleep -Milliseconds 300 }" > nul 2>&1
+
+if not "%LAN_API_URL%"=="" (
+    pushd "%WEBSITE_DIR%"
+    call php artisan app:firebase-runtime --lan-api="%LAN_API_URL%" --lan-gateway="%LAN_GATEWAY_URL%" > nul 2>&1
+    popd
+)
 
 echo [3/4] Launching Mobile Client ^(Flutter Chrome synced to :8000 ^& :4000^)...
 if exist "%MOBILE_DIR%\pubspec.yaml" (
@@ -70,9 +85,11 @@ echo  FIREBASE API ^& DOCS:
 echo   - Firebase Gateway API:  http://127.0.0.1:4000/api/firebase/home
 echo   - Firebase Swagger Docs: http://127.0.0.1:4000/docs
 echo.
-echo  MOBILE CLIENT:
-echo   - Launched in Chrome ^(connected to :8000 + :4000 + Cloud Firestore^)
-echo   - Android Emulator cmd:  flutter run -d android
+echo  ANDROID PHONE APP ^(APK Auto-Discovery via Cloud Firestore^):
+if not "%LAN_API_URL%"=="" (
+    echo   - Same Wi-Fi / LAN:      %LAN_API_URL% ^& %LAN_GATEWAY_URL%
+)
+echo   - Anywhere ^(4G/Wi-Fi^):   Auto-synced Cloudflare tunnel ^(once connected below^)
 echo.
 echo  PUBLIC ONLINE LINKS ^(Connected to this PC^):
 echo   - Direct Tunnel Backup:  https://reset-store-cambodia.loca.lt
@@ -86,8 +103,6 @@ echo  Keep this window open during your presentation. Press Ctrl + C to stop.
 echo ============================================================================
 echo.
 
-if exist "C:\Users\Kongc\bin\cloudflared.exe" (
-    "C:\Users\Kongc\bin\cloudflared.exe" tunnel --url http://127.0.0.1:8000
-) else (
-    cloudflared tunnel --url http://127.0.0.1:8000
-)
+set "CF_EXE=cloudflared"
+if exist "C:\Users\Kongc\bin\cloudflared.exe" set "CF_EXE=C:\Users\Kongc\bin\cloudflared.exe"
+powershell -NoProfile -Command "$cf = $env:CF_EXE; $webDir = $env:WEBSITE_DIR; $lanApi = $env:LAN_API_URL; $lanGw = $env:LAN_GATEWAY_URL; $published = $false; & $cf tunnel --url http://127.0.0.1:8000 2>&1 | ForEach-Object { $line = $_.ToString(); Write-Host $line; if (-not $published -and $line -match '(https://[a-z0-9-]+\.trycloudflare\.com)') { $tunnelUrl = $Matches[1]; $published = $true; try { $cmdArgs = @('artisan','app:firebase-runtime','--tunnel=' + $tunnelUrl); if ($lanApi) { $cmdArgs += ('--lan-api=' + $lanApi) }; if ($lanGw) { $cmdArgs += ('--lan-gateway=' + $lanGw) }; Start-Process -FilePath 'php' -ArgumentList $cmdArgs -WorkingDirectory $webDir -WindowStyle Hidden | Out-Null; Write-Host ('[Mobile Sync] Published live tunnel for Android APK: ' + $tunnelUrl) -ForegroundColor Cyan } catch {} } }"
